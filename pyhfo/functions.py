@@ -11,15 +11,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.signal as sig
 
-def plot_eeg(dataset, time_vec, sample_rate, ch_labels = None, start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8), detrend = False, envelope=False, badch = []):
+def plot_eeg(Data_dict,dataset_str = 'raw_signal' ,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8), detrend = False, envelope=False, badch = []):
     """
     Function to plot EEG signal 
     Inputs:
+        Data_dict - data dictionary
+        dataset_str ['raw_signal'] - name of dataset on dictionary.  
+        time_vec - numpy array with time vector
+        sample_rate : sample rate in Hz
         start_sec [0 - default] - the start second to plot (interger)
         window_size [10] - Size of window in second (interger)
         amp [200] - Amplitude between channels in plot (interger)
         figure_size [(15,8)] - Size of figure, tuple of integers with width, height in inches (tuple)
+        detrend [False] - detrend each line before filter
+        envelop [False] - plot the amplitude envelope by hilbert transform
+        badch [] - list of channels to exclude from ploting
     """
+    #geting data from Data_dict
+    time_vec    = Data_dict['time_vec']
+    sample_rate = Data_dict['sample_rate']
+    ch_labels   = Data_dict['ch_labels']
+    # geting dataset
+    dataset = Data_dict[dataset_str]
     # Transforming the start_sec in points
     start_sec *= sample_rate
     start_sec = int(start_sec)
