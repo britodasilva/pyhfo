@@ -29,6 +29,20 @@ def open_dataset(file_name,dataset_name):
     # Load bad channels
     bad_channels = dataset.attrs["Bad_channels"]    
     # Creating dictionary
-    Data_dict = {"data": dataset[:], "sample_rate": sample_rate, "n_channels": dataset.shape[1], "ch_labels": dataset.attrs['Channel_Labels'], "time_vec": time_vec, "bad_channels": bad_channels} 
+    Data_dict = {"data": dataset[:], "sample_rate": sample_rate, "n_channels": dataset.shape[1], 
+                 "ch_labels": dataset.attrs['Channel_Labels'], "time_vec": time_vec, 
+                 "bad_channels": bad_channels} 
     h5.close()
     return Data_dict
+    
+def save_dataset(Data_dict,file_name,dataset_name):
+    '''
+    save Data_dic in a dataset in a specific file_name
+    '''
+    h5 = h5py.File(file_name,'w')
+    data = Data_dict['data']
+    dataset  = h5.create_dataset(dataset_name,data=data)
+    dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
+    dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
+    dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
+    h5.close()
