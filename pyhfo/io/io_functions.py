@@ -7,6 +7,7 @@ Created on Fri Apr 17 10:12:23 2015
 
 import h5py
 import numpy as np
+import RHD
 
 
 def open_dataset(file_name,dataset_name):
@@ -39,10 +40,45 @@ def save_dataset(Data_dict,file_name,dataset_name):
     '''
     save Data_dic in a dataset in a specific file_name
     '''
-    h5 = h5py.File(file_name,'w')
+    h5 = h5py.File(file_name,'a')
     data = Data_dict['data']
-    dataset  = h5.create_dataset(dataset_name,data=data)
+    dataset  = h5.require_dataset(dataset_name,data=data, shape = data.shape, dtype= data.dtype)
     dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
     dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
     dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
     h5.close()
+    
+def loadRDH(filename):
+    ''' 
+    Created to load 64 channels at port A -  code need change if use diferent configuration. 
+    It use RHD.py file to read and return Data_dict
+    '''
+    # load file
+    myData = RHD.openRhd(filename)
+    # get sample rate
+    sample_rate = myData.sample_rate
+    # get channels 
+    myChannels = myData.channels
+    # create a empty signal
+    signal = np.zeros((myChannels['A-000'].getTrace().size,64))
+    signal[:] = np.NAN
+    labels = [] 
+    for ch in range(64):
+        if ch < 10:
+            label = "A-00" + str(ch)
+        else:
+            label = "A-0" + str(ch)
+        signal[:,ch] = myChannels[label].getTrace()
+        labels.append(label)
+    
+    # Time vector   
+    n_points  = signal.shape[0]
+    end_time  = n_points/sample_rate
+    time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
+    Data_dict = {"data": signal, "sample_rate": sample_rate, "n_channels": signal.shape[1], 
+                 "ch_labels": labels, "time_vec": time_vec, 
+                 "bad_channels": []} 
+    return Data_dict
+    
+        
+        
