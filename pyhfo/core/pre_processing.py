@@ -7,6 +7,7 @@ Created on Fri Apr 17 13:15:57 2015
 
 import scipy.signal as sig
 import numpy as np
+from pyhfo.io import make_dict   
 
 def decimate(Data_dict,q):
     '''
@@ -27,9 +28,7 @@ def decimate(Data_dict,q):
     # creating new time_vec
     new_time_vec = Data_dict["time_vec"][0:-1:q]
     # creating new Data_dict
-    new_Data_dict = {"data": new_data, "sample_rate": new_sample_rate, 
-                     "n_channels": nch, "ch_labels": Data_dict["ch_labels"], 
-                     "time_vec": new_time_vec, "bad_channels": Data_dict["bad_channels"]} 
+    new_Data_dict = make_dict(new_data,new_sample_rate,nch,Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
     return new_Data_dict
     
 def resample(Data_dict,q):
@@ -48,9 +47,8 @@ def resample(Data_dict,q):
         # creating new time_vec
         new_time_vec = Data_dict["time_vec"][0:-1:q]
         # creating new Data_dict
-        new_Data_dict = {"data": new_data, "sample_rate": new_sample_rate, 
-                         "n_channels": new_data.shape[1], "ch_labels": Data_dict["ch_labels"], 
-                         "time_vec": new_time_vec, "bad_channels": Data_dict["bad_channels"]} 
+        
+        new_Data_dict = make_dict(new_data,new_sample_rate,new_data.shape[1],Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
     return new_Data_dict
     
 def merge(Data_dict1,Data_dict2):
@@ -69,12 +67,68 @@ def merge(Data_dict1,Data_dict2):
     new_time_vec = np.concatenate((time_vec1,time_vec2),axis=0)
     
     # creating new Data_dict
-    new_Data_dict = {"data": new_data, "sample_rate": Data_dict1["sample_rate"], 
-                     "n_channels": new_data.shape[1], "ch_labels": Data_dict1["ch_labels"], 
-                     "time_vec": new_time_vec, "bad_channels": Data_dict1["bad_channels"]}
-                     
+    new_Data_dict = make_dict(new_data,Data_dict1["sample_rate"],new_data.shape[1],Data_dict1["ch_labels"],new_time_vec,Data_dict1["bad_channels"])
     return new_Data_dict
+
+def add_bad(Data_dict,channels):
+    ''' 
+    Add bad channels to the list
+    '''
+    def adding(Data_dict,item):
+        if type(item) == str:
+            idx = [i for i,x in enumerate(Data_dict['ch_labels']) if x == item]
+        elif type(item) == int:
+            idx = item
+        Data_dict['bad_channels'] = sorted(set(np.append(Data_dict['bad_channels'],idx)))
     
+    if type(channels) == list:
+        for item in channels:
+            adding(Data_dict,item)
+    else:
+        adding(Data_dict,channels)
+            
+    return Data_dict
+    
+def remove_bad(Data_dict,channels):
+    ''' 
+    Remove channels of the bad list
+    '''
+    def removing(Data_dict,item):
+        if type(item) == str:
+            idx = [i for i,x in enumerate(Data_dict['ch_labels']) if x == item]
+        elif type(item) == int:
+            idx = item
+                
+        if idx in Data_dict['bad_channels']:
+            index = [i for i,s in enumerate(Data_dict['bad_channels']) if s ==idx]
+            Data_dict['bad_channels'] = np.delete(Data_dict['bad_channels'],index)
+    
+    if type(channels) == list:
+        for item in channels:
+            removing(Data_dict,item)
+    else:
+        removing(Data_dict,channels)
+
+    return Data_dict        
+    
+   
+def create_avg(Data_dict):
+    ''' 
+    Get Data_dict, make averege montagem excluding bad_channels
+    '''
+    # get non-bad channels index
+    index = [ch for ch in range(Data_dict['n_channels']) if ch not in Data_dict['bad_channels']]
+    # empty variable    
+    avg = np.empty(Data_dict['data'].shape)
+    avg[:] = np.NAN
+    avg_label = []
+    for ch in index:
+        avg[:,ch] = Data_dict['data'][:,ch]-np.mean(Data_dict['data'][:,index],1)
+    for ch in range(Data_dict['n_channels']):
+        avg_label.append(Data_dict["ch_labels"][ch]+'-avg')
+    
+    new_Data_dict = make_dict(avg,Data_dict["sample_rate"],avg.shape[1],avg_label,Data_dict['time_vec'],Data_dict["bad_channels"])
+    return new_Data_dict
     
     
     

@@ -96,7 +96,9 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
     # changing the x-axis (label, limit and ticks)
     plt .xlabel('time (s)', size = 16)
     plt.xlim(time_vec[time_window[0]],time_vec[time_window[-1]])
-    plt.xticks(size = 16)
+    plt.xticks(np.linspace(int(time_vec[time_window[0]]),int(time_vec[time_window[-1]]),int(window_size/sample_rate)+1),size = 16)
+    ax = plt.gca()
+    ax.xaxis.grid(True)
     # changing the y-axis
     plt.yticks(ticklocs, ticklabel, size=16)
     plt.ylim(0,(ch_l)*amp)
