@@ -39,7 +39,11 @@ def open_dataset(file_name,dataset_name):
     n_points         = dataset.shape[0]
     end_time         = n_points/sample_rate
     # Time vector
-    time_vec         = np.linspace(0,end_time,n_points,endpoint=False)
+    if 'Time_vec_edge' in dataset.attrs:
+        edge = dataset.attrs['Time_vec_edge']
+        time_vec = np.linspace(edge[0],edge[1],n_points,endpoint=False)
+    else:
+        time_vec = np.linspace(0,end_time,n_points,endpoint=False)
     # Check if has 'Bad_channels' attribute, if not, create one empty
     if len([x for x in dataset.attrs.keys() if x == 'Bad_channels']) == 0:
         dataset.attrs.create("Bad_channels",[],dtype=int)
@@ -56,10 +60,13 @@ def save_dataset(Data_dict,file_name,dataset_name):
     '''
     h5 = h5py.File(file_name,'a')
     data = Data_dict['data']
-    dataset  = h5.require_dataset(dataset_name,data=data, shape = data.shape, dtype= data.dtype)
+    if dataset_name in h5:
+        del h5[dataset_name]
+    dataset  = h5.create_dataset(dataset_name,data=data)
     dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
     dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
     dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
+    dataset.attrs.create('Time_vec_edge',[Data_dict['time_vec'][0],Data_dict['time_vec'][-1]])
     h5.close()
     
 def loadRDH(filename):

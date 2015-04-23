@@ -51,23 +51,46 @@ def resample(Data_dict,q):
         new_Data_dict = make_dict(new_data,new_sample_rate,new_data.shape[1],Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
     return new_Data_dict
     
-def merge(Data_dict1,Data_dict2):
+def merge(Data_dict1,Data_dict2,new_time = False):
+    # check if is the same sample rate, then get it
+    if Data_dict1['sample_rate'] != Data_dict2['sample_rate']:
+        raise Exception('Dict should have same sample_rate')
+    sample_rate =  Data_dict1['sample_rate'] 
+    
+    # check if is the same number of channels, then get it
+    if Data_dict1['n_channels'] != Data_dict2['n_channels']:
+        raise Exception('Dict should have same n_channels')
+    n_channels = Data_dict1['n_channels'] 
+    # get the label from dict 1
+    ch_labels = Data_dict1["ch_labels"]   
+    # Append bad channels from both dictionary
+    bad_channels = []
+    bad_channels =  sorted(set(np.append(bad_channels,Data_dict1['bad_channels'])))
+    bad_channels =  sorted(set(np.append(bad_channels,Data_dict2['bad_channels'])))
+     
+    
     # get data and time_vec from dict1
     data1 = Data_dict1['data']
     time_vec1 = Data_dict1["time_vec"]
-    # get data and time_vec from dict1
+    # get data and time_vec from dict2
     data2 = Data_dict2['data']
     time_vec2 = Data_dict2["time_vec"]
-    time_vec2 += time_vec1[-1]
+    
     
     # broadcast new_data
     new_data = np.concatenate((data1,data2),axis=0)
     
-    # broadcast new_time_vec
-    new_time_vec = np.concatenate((time_vec1,time_vec2),axis=0)
+    
+    if new_time:
+        n_points         = new_data.shape[0]
+        end_time         = n_points/sample_rate
+        new_time_vec = np.linspace(0,end_time,n_points,endpoint=False)
+    else:
+        # broadcast new_time_vec
+        new_time_vec = np.concatenate((time_vec1,time_vec2),axis=0)
     
     # creating new Data_dict
-    new_Data_dict = make_dict(new_data,Data_dict1["sample_rate"],new_data.shape[1],Data_dict1["ch_labels"],new_time_vec,Data_dict1["bad_channels"])
+    new_Data_dict = make_dict(new_data,sample_rate,n_channels,ch_labels,new_time_vec,bad_channels)
     return new_Data_dict
 
 def add_bad(Data_dict,channels):
