@@ -9,28 +9,12 @@ import h5py
 import numpy as np
 import RHD
 import scipy.io as sio
+from pyhfo.core import create_DataObj, SpikeObj, SpikeList
 
-def make_dict(data,sample_rate,amp_unit,n_channel,ch_labels,time_vec,bad_channels):
-    ''' 
-    Make a dictionary 
-    data: numpy array - points x channels
-    sample_rate: int
-    amp_unit: str
-    n_channes: int
-    ch_labels: list of strings
-    time_vec: numpy array - (points,)
-    bad_channels: list of int
-    '''
-    Data_dict = {"data": data, "sample_rate": sample_rate,
-                 "amp_unit": amp_unit, "n_channels": n_channel, 
-                 "ch_labels": ch_labels, "time_vec": time_vec, 
-                 "bad_channels": bad_channels} 
-    return Data_dict
-    
     
 def open_dataset(file_name,dataset_name):
     '''
-    open a dataset in a specific file_name, return Data_dict
+    open a dataset in a specific file_name, return DataObj
     '''
     # reading h5 file
     h5 = h5py.File(file_name,'r+')
@@ -44,7 +28,7 @@ def open_dataset(file_name,dataset_name):
     if 'amp_unit' in dataset.attrs:
         amp_unit = dataset.attrs['amp_unit']
     else:
-        amp_unit = 'None'
+        amp_unit = 'AU'
         
     
     # Time vector
@@ -59,24 +43,23 @@ def open_dataset(file_name,dataset_name):
     # Load bad channels
     bad_channels = dataset.attrs["Bad_channels"]    
     # Creating dictionary
-    Data_dict = make_dict(dataset[:],sample_rate,amp_unit,dataset.shape[1],dataset.attrs['Channel_Labels'],time_vec,bad_channels)
+    DataObj = create_DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels)
     h5.close()
-    return Data_dict
+    return DataObj
     
-def save_dataset(Data_dict,file_name,dataset_name):
+def save_dataset(DataObj,file_name,dataset_name):
     '''
-    save Data_dic in a dataset in a specific file_name
+    save DataObj in a dataset in a specific file_name
     '''
     h5 = h5py.File(file_name,'a')
-    data = Data_dict['data']
     if dataset_name in h5:
         del h5[dataset_name]
-    dataset  = h5.create_dataset(dataset_name,data=data)
-    dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
-    dataset.attrs.create('amp_unit',Data_dict['amp_unit'])
-    dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
-    dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
-    dataset.attrs.create('Time_vec_edge',[Data_dict['time_vec'][0],Data_dict['time_vec'][-1]])
+    dataset  = h5.create_dataset(dataset_name,data=DataObj.data)
+    dataset.attrs.create('SampleRate[Hz]',DataObj.sample_rate)
+    dataset.attrs.create('amp_unit',DataObj.amp_unit)
+    dataset.attrs.create('Bad_channels',DataObj.bad_channels)
+    dataset.attrs.create('Channel_Labels', DataObj.ch_labels)
+    dataset.attrs.create('Time_vec_edge',[DataObj.time_vec[0],DataObj.time_vec[-1]])
     h5.close()
     
 def loadRDH(filename):
@@ -107,22 +90,17 @@ def loadRDH(filename):
     n_points  = signal.shape[0]
     end_time  = n_points/sample_rate
     time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
-    Data_dict = make_dict(signal,sample_rate,amp_unit,signal.shape[1],labels,time_vec,[])
-    return Data_dict
+    DataObj = create_DataObj(signal,sample_rate,amp_unit,labels,time_vec,[])
+    return DataObj
     
-
-
-    
-
 
 def loadMAT(slice_filename,parameters_filename):
     '''
     Created to convert .mat files with specific configuration for ECoG data of Newcastle Hospitals and create a dict.
-    If you want to load other .mat file, use scipy.io. loadmat and make_dict
+    If you want to load other .mat file, use scipy.io. loadmat and create_DataObj
     '''
     mat = sio.loadmat(parameters_filename, struct_as_record=False, squeeze_me=True)
     parameters = mat['parameters']
-    n_channel =  parameters.num_channels
     ch_labels = parameters.channels
     sample_rate = parameters.sr
     f = sio.loadmat(slice_filename, struct_as_record=False, squeeze_me=True)
@@ -130,5 +108,27 @@ def loadMAT(slice_filename,parameters_filename):
     time_vec = Data.time_vec
     signal = Data.raw.T
     amp_unit = '$\mu V$'
-    Data_dict = make_dict(signal,sample_rate,amp_unit,n_channel,ch_labels,time_vec,[])
-    return Data_dict
+    DataObj = create_DataObj(signal,sample_rate,amp_unit,ch_labels,time_vec,[])
+    return DataObj
+    
+    
+def loadSPK_waveclus(filename):
+    '''
+    load Spikes sorted by wave_clus.
+    filename - Str with file .mat
+    '''
+    SpkObj = SpikeList()
+    mat = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
+    clusters = mat['cluster_class'][:,0]
+    times = mat['cluster_class'][:,1]/1000
+    spikes = mat['spikes']
+    features = mat['inspk']
+    for idx,waveform in enumerate(spikes):
+        tstamp = times[idx]
+        clus = clusters[idx]
+        feat= features[idx]
+        spk = SpikeObj(waveform,tstamp,clus,feat)
+        SpkObj.__addEvent__(spk)
+    return SpkObj
+    
+    

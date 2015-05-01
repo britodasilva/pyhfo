@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from . import adjust_spines
 
-def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
-             dpi=600, detrend = False, envelope=False, plot_bad = False, exclude = [], grid=True, 
+def plot_eeg(DataObj,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
+             dpi=600, detrend = True, envelope=False, plot_bad = False, exclude = [], grid=True, 
              xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],**kwargs):
     """
     Function to plot EEG signal 
@@ -36,14 +36,14 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
         spines ['left', 'bottom'] 
     """
     #geting data from Data_dict
-    data = Data_dict['data']
-    time_vec    = Data_dict['time_vec']
-    sample_rate = Data_dict['sample_rate']
-    ch_labels   = Data_dict['ch_labels']
+    data = DataObj.data
+    time_vec    = DataObj.time_vec
+    sample_rate = DataObj.sample_rate
+    ch_labels   = DataObj.ch_labels
     if plot_bad:
         badch = np.array([],dtype=int) # a empty array 
     else:
-        badch = Data_dict['bad_channels']
+        badch = DataObj.bad_channels
      
     if type(exclude) == list:
        for item in exclude:
@@ -102,10 +102,11 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
     if len(spines) > 0:
         # changing the x-axis (label, limit and ticks)
         plt .xlabel('time (s)', size = 16)
-        xtickslocs = np.linspace(int(time_vec[time_window[0]]),int(time_vec[time_window[-1]]),int(window_size/(sample_rate*xtickspace))+1,endpoint=True)
+        #xtickslocs = np.linspace(int(time_vec[time_window[0]]),int(time_vec[time_window[-1]]),int(window_size/(sample_rate*xtickspace)),endpoint=True)
+        xtickslocs = np.arange(int(time_vec[time_window[0]]),int(time_vec[time_window[-1]]*2),xtickspace)     
         xtickslabels = ['']*len(xtickslocs)
-        for x in range(0,len(xtickslocs),10):
-            xtickslabels[x] = xtickslocs[x]
+        for i,x in enumerate(np.arange(0,len(xtickslocs),10)):
+            xtickslabels[i*10] = xtickslocs[x]
         plt.xticks(xtickslocs,xtickslabels,size = 16)
         # changing the y-axis
         plt.yticks(yticklocs, yticklabel, size=16)
