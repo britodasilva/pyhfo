@@ -4,4 +4,4 @@ Created on Thu Apr 16 17:48:05 2015
 
 @author: anderson
 """
-version = '1.0.0-Beta'
+version = '1.0.2-Beta'
