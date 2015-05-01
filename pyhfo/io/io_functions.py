@@ -101,7 +101,7 @@ def loadRDH(filename):
             label = "A-0" + str(ch)
         signal[:,ch] = myChannels[label].getTrace()
         labels.append(label)
-    signal *= 0.195
+    signal *= 0.195 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
     amp_unit = '$\mu V$'
     # Time vector   
     n_points  = signal.shape[0]
