@@ -15,7 +15,7 @@ To install pyhfo, use::
 	pip install pyhfo
    
 Developer install  
-------------
+-----------------
 
 .. code-block:: bash
 
