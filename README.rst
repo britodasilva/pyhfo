@@ -1,6 +1,7 @@
 *****
 pyhfo
 *****
+
 Python Package to analyse High Frequency Oscillations (HFO) in electrophysiological data. 
 
  
@@ -9,6 +10,7 @@ Python Package to analyse High Frequency Oscillations (HFO) in electrophysiologi
 
 Installation
 ============
+
 To install pyhfo, use::
 
 	pip install pyhfo
@@ -24,7 +26,8 @@ Developer install
 
 Folter structure
 ================
-- **/io/** - contains Input-Output scripts (loads/save data)
-- **/ui/** - contains User Interface scripts (plots)
-- **/core/** - contains main scripts
+
+- ``/io/`` contains Input-Output scripts (loads/save data)
+- ``/ui/`` contains User Interface scripts (plots)
+- ``/core/`` contains main scripts
 
