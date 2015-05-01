@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from . import adjust_spines
 
-def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),dpi=600, detrend = False, envelope=False, plot_bad = True, exclude = [], grid=True, xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom']):
+def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
+             dpi=600, detrend = False, envelope=False, plot_bad = False, exclude = [], grid=True, 
+             xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],**kwargs):
     """
     Function to plot EEG signal 
     Inputs:
@@ -25,7 +27,13 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
         figure_size [(15,8)] - Size of figure, tuple of integers with width, height in inches (tuple)
         detrend [False] - detrend each line before filter
         envelop [False] - plot the amplitude envelope by hilbert transform
-        plot_bad [True] - if False, exclude bad channels from plot
+        plot_bad [False] - if False, exclude bad channels from plot
+        exclude - list of channels to exclude
+        gride [True] - plot grid
+        xtickspace [1] - distance of tick
+        saveplot [None] - String with the name to save (ex: 'Figura.png')
+        subplot [None] - axes of figure where figure should plot
+        spines ['left', 'bottom'] 
     """
     #geting data from Data_dict
     data = Data_dict['data']
@@ -36,9 +44,7 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
         badch = np.array([],dtype=int) # a empty array 
     else:
         badch = Data_dict['bad_channels']
-    
-    
-    
+     
     if type(exclude) == list:
        for item in exclude:
             if type(item) == str:
@@ -54,8 +60,6 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
     elif type(exclude) == int:
         idx = exclude
         badch = sorted(set(np.append(badch,idx)))
-    
-    
     
     # Transforming the start_sec in points
     start_sec *= sample_rate
@@ -77,23 +81,22 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
     yticklabel = [] 
     ch_l = 1
     # Loop to plot each channel
-    for ch in range(data.shape[1]):
-        if ch not in badch:
-            # in the axes, plot the raw signal for each channel with a amp diference 
-            if detrend:
-                sp.plot(time_vec[time_window],(ch_l)*amp + sig.detrend(data[time_window,ch]))
-            else:
-                sp.plot(time_vec[time_window],(ch_l)*amp + data[time_window,ch])
-            if envelope:
-                sp.plot(time_vec[time_window],(ch_l)*amp + np.abs(sig.hilbert(data[time_window,ch])))
-            # appeng the channel label and the tick location
-            if ch_labels is None:
-                yticklabel.append(ch_l)            
-            else:
-                yticklabel.append(ch_labels[ch])
-                
-            yticklocs.append((ch_l)*amp)
-            ch_l += 1
+    for ch in [x for x in range(data.shape[1]) if x not in badch]:
+        # in the axes, plot the raw signal for each channel with a amp diference 
+        if detrend:
+            sp.plot(time_vec[time_window],(ch_l)*amp + sig.detrend(data[time_window,ch]),**kwargs)
+        else:
+            sp.plot(time_vec[time_window],(ch_l)*amp + data[time_window,ch],**kwargs)
+        if envelope:
+            sp.plot(time_vec[time_window],(ch_l)*amp + np.abs(sig.hilbert(data[time_window,ch])),**kwargs)
+        # appeng the channel label and the tick location
+        if ch_labels is None:
+            yticklabel.append(ch_l)            
+        else:
+            yticklabel.append(ch_labels[ch])
+            
+        yticklocs.append((ch_l)*amp)
+        ch_l += 1
 
     adjust_spines(sp, spines)
     if len(spines) > 0:
@@ -104,15 +107,15 @@ def plot_eeg(Data_dict,start_sec = 0, window_size = 10, amp = 200, figure_size =
         for x in range(0,len(xtickslocs),10):
             xtickslabels[x] = xtickslocs[x]
         plt.xticks(xtickslocs,xtickslabels,size = 16)
-            
-        if grid:    
-            ax = plt.gca()
-            ax.xaxis.grid(True)
         # changing the y-axis
         plt.yticks(yticklocs, yticklabel, size=16)
     
-    plt.xlim(time_vec[time_window[0]],time_vec[time_window[-1]]+np.diff(time_vec[time_window[0:2]]))
-    plt.ylim(0,(ch_l)*amp)
+    if grid:    
+        ax = plt.gca()
+        ax.xaxis.grid(True)
+    
+    sp.set_xlim(time_vec[time_window[0]],time_vec[time_window[-1]]+np.diff(time_vec[time_window[0:2]]))
+    #sp.set_ylim(0,(ch_l)*amp)
     
     if saveplot != None:
         if type(saveplot) == str: 

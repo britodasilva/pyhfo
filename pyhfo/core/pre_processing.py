@@ -28,7 +28,7 @@ def decimate(Data_dict,q):
     # creating new time_vec
     new_time_vec = Data_dict["time_vec"][0:-1:q]
     # creating new Data_dict
-    new_Data_dict = make_dict(new_data,new_sample_rate,nch,Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
+    new_Data_dict = make_dict(new_data,new_sample_rate,Data_dict["amp_unit"],nch,Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
     return new_Data_dict
     
 def resample(Data_dict,q):
@@ -48,7 +48,7 @@ def resample(Data_dict,q):
         new_time_vec = Data_dict["time_vec"][0:-1:q]
         # creating new Data_dict
         
-        new_Data_dict = make_dict(new_data,new_sample_rate,new_data.shape[1],Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
+        new_Data_dict = make_dict(new_data,new_sample_rate,Data_dict["amp_unit"],new_data.shape[1],Data_dict["ch_labels"],new_time_vec,Data_dict["bad_channels"])
     return new_Data_dict
     
 def merge(Data_dict1,Data_dict2,new_time = False):
@@ -61,6 +61,12 @@ def merge(Data_dict1,Data_dict2,new_time = False):
     if Data_dict1['n_channels'] != Data_dict2['n_channels']:
         raise Exception('Dict should have same n_channels')
     n_channels = Data_dict1['n_channels'] 
+    
+    # check if is the same amplitude 
+    if Data_dict1["amp_unit"] != Data_dict2["amp_unit"]:
+        raise Exception('Dict should have same amplitude unit')
+    amp_unit = Data_dict1["amp_unit"]
+        
     # get the label from dict 1
     ch_labels = Data_dict1["ch_labels"]   
     # Append bad channels from both dictionary
@@ -90,7 +96,7 @@ def merge(Data_dict1,Data_dict2,new_time = False):
         new_time_vec = np.concatenate((time_vec1,time_vec2),axis=0)
     
     # creating new Data_dict
-    new_Data_dict = make_dict(new_data,sample_rate,n_channels,ch_labels,new_time_vec,bad_channels)
+    new_Data_dict = make_dict(new_data,sample_rate,amp_unit,n_channels,ch_labels,new_time_vec,bad_channels)
     return new_Data_dict
 
 def add_bad(Data_dict,channels):
@@ -150,8 +156,53 @@ def create_avg(Data_dict):
     for ch in range(Data_dict['n_channels']):
         avg_label.append(Data_dict["ch_labels"][ch]+'-avg')
     
-    new_Data_dict = make_dict(avg,Data_dict["sample_rate"],avg.shape[1],avg_label,Data_dict['time_vec'],Data_dict["bad_channels"])
+    new_Data_dict = make_dict(avg,Data_dict["sample_rate"],Data_dict["amp_unit"],avg.shape[1],avg_label,Data_dict["time_vec"],Data_dict["bad_channels"])
     return new_Data_dict
     
     
+    
+def eegfilt(Data_dict,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5)):
+    '''
+    Filter EEG Data dict. Create a high pass filter if only have low_cut, a low pass filter if only has a high_cut and a pass band filter if has both. 
+    '''
+    if low_cut == None and high_cut == None:
+        raise Exception('You should determine the cutting frequencies')
+       
+    signal = Data_dict['data']
+    sample_rate = Data_dict['sample_rate']
+    time_vec = Data_dict["time_vec"]
+    labels = Data_dict["ch_labels"]
+    npoints, nch = signal.shape
+    # order
+    if order == None:
+        numtaps = int(sample_rate/10 + 1)
+    else:
+        numtaps = order
+    # Nyquist rate
+    nyq = sample_rate/2
+    
+    # cutoff frequencies
+    if high_cut == None: # high pass
+        f = [low_cut]
+        pass_zero=False
+    elif low_cut == None: # low pass
+        f = [high_cut]
+        pass_zero=True        
+    else: # band pass
+        f = [low_cut,high_cut]
+        pass_zero=False
+    
+    # Creating filter
+    b = sig.firwin(numtaps,f,pass_zero=pass_zero,window=window,nyq=nyq)
+    # Creating filtered, numpy array with the filtered signal of raw data
+    filtered = np.empty((npoints,nch))
+    filtered[:] = np.NAN
+    for ch in range(nch):
+        if ch not in Data_dict["bad_channels"]:
+            print 'Filtering channel ' + labels[ch]
+            filtered[:,ch] = sig.filtfilt(b,np.array([1]),signal[:,ch])
+            
+            
+    new_Data_dict = make_dict(filtered,sample_rate,Data_dict["amp_unit"],nch,labels,time_vec,Data_dict["bad_channels"])
+    return new_Data_dict
     

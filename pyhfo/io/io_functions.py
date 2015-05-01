@@ -10,17 +10,19 @@ import numpy as np
 import RHD
 import scipy.io as sio
 
-def make_dict(data,sample_rate,n_channel,ch_labels,time_vec,bad_channels):
+def make_dict(data,sample_rate,amp_unit,n_channel,ch_labels,time_vec,bad_channels):
     ''' 
     Make a dictionary 
     data: numpy array - points x channels
     sample_rate: int
+    amp_unit: str
     n_channes: int
     ch_labels: list of strings
     time_vec: numpy array - (points,)
     bad_channels: list of int
     '''
-    Data_dict = {"data": data, "sample_rate": sample_rate, "n_channels": n_channel, 
+    Data_dict = {"data": data, "sample_rate": sample_rate,
+                 "amp_unit": amp_unit, "n_channels": n_channel, 
                  "ch_labels": ch_labels, "time_vec": time_vec, 
                  "bad_channels": bad_channels} 
     return Data_dict
@@ -38,6 +40,13 @@ def open_dataset(file_name,dataset_name):
     sample_rate = dataset.attrs['SampleRate[Hz]']
     n_points         = dataset.shape[0]
     end_time         = n_points/sample_rate
+    # Amplitude Unit
+    if 'amp_unit' in dataset.attrs:
+        amp_unit = dataset.attrs['amp_unit']
+    else:
+        amp_unit = 'None'
+        
+    
     # Time vector
     if 'Time_vec_edge' in dataset.attrs:
         edge = dataset.attrs['Time_vec_edge']
@@ -50,7 +59,7 @@ def open_dataset(file_name,dataset_name):
     # Load bad channels
     bad_channels = dataset.attrs["Bad_channels"]    
     # Creating dictionary
-    Data_dict = make_dict(dataset[:],sample_rate,dataset.shape[1],dataset.attrs['Channel_Labels'],time_vec,bad_channels)
+    Data_dict = make_dict(dataset[:],sample_rate,amp_unit,dataset.shape[1],dataset.attrs['Channel_Labels'],time_vec,bad_channels)
     h5.close()
     return Data_dict
     
@@ -64,6 +73,7 @@ def save_dataset(Data_dict,file_name,dataset_name):
         del h5[dataset_name]
     dataset  = h5.create_dataset(dataset_name,data=data)
     dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
+    dataset.attrs.create('amp_unit',Data_dict['amp_unit'])
     dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
     dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
     dataset.attrs.create('Time_vec_edge',[Data_dict['time_vec'][0],Data_dict['time_vec'][-1]])
@@ -91,12 +101,13 @@ def loadRDH(filename):
             label = "A-0" + str(ch)
         signal[:,ch] = myChannels[label].getTrace()
         labels.append(label)
-    
+    signal *= 0.195
+    amp_unit = '$\mu V$'
     # Time vector   
     n_points  = signal.shape[0]
     end_time  = n_points/sample_rate
     time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
-    Data_dict = make_dict(signal,sample_rate,signal.shape[1],labels,time_vec,[])
+    Data_dict = make_dict(signal,sample_rate,amp_unit,signal.shape[1],labels,time_vec,[])
     return Data_dict
     
 
@@ -118,5 +129,6 @@ def loadMAT(slice_filename,parameters_filename):
     Data = f['Data']
     time_vec = Data.time_vec
     signal = Data.raw.T
-    Data_dict = make_dict(signal,sample_rate,n_channel,ch_labels,time_vec,[])
+    amp_unit = '$\mu V$'
+    Data_dict = make_dict(signal,sample_rate,amp_unit,n_channel,ch_labels,time_vec,[])
     return Data_dict
