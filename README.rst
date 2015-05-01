@@ -1,6 +1,5 @@
-*****
 pyhfo
-*****
+=====
 
 Python Package to analyse High Frequency Oscillations (HFO) in electrophysiological data. 
 
