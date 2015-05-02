@@ -81,10 +81,6 @@ class DataObj(object):
         f = plt.figure(figsize=figure_size,dpi=dpi)
         # creating the axes
         ax = f.add_subplot(111)
-        if 'start_sec' in kwargs:
-            start_sec = kwargs['start_sec']
-        else:
-            start_sec = 0
         plot_eeg(self,start_sec,window_size,subplot = ax, **kwargs)
         #plt.close(fig)
         test = Index(start_sec)
