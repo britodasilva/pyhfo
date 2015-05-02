@@ -39,7 +39,7 @@ def save_dataset(Data_dict,file_name,dataset_name):
     '''
     save Data_dic in a dataset in a specific file_name
     '''
-    h5 = h5py.File(file_name,'w')
+    h5 = h5py.File(file_name,'a')
     data = Data_dict['data']
     dataset  = h5.create_dataset(dataset_name,data=data)
     dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
