@@ -9,7 +9,7 @@ import h5py
 import numpy as np
 import RHD
 import scipy.io as sio
-from pyhfo.core import create_DataObj, SpikeObj, SpikeList
+from pyhfo.core import DataObj, SpikeObj, SpikeList
 
     
 def open_dataset(file_name,dataset_name):
@@ -20,6 +20,8 @@ def open_dataset(file_name,dataset_name):
     h5 = h5py.File(file_name,'r+')
     # loading dataset
     dataset = h5[dataset_name]
+        
+    
     # Sample Rate attribute
     sample_rate = dataset.attrs['SampleRate[Hz]']
     n_points         = dataset.shape[0]
@@ -29,8 +31,6 @@ def open_dataset(file_name,dataset_name):
         amp_unit = dataset.attrs['amp_unit']
     else:
         amp_unit = 'AU'
-        
-    
     # Time vector
     if 'Time_vec_edge' in dataset.attrs:
         edge = dataset.attrs['Time_vec_edge']
@@ -43,23 +43,31 @@ def open_dataset(file_name,dataset_name):
     # Load bad channels
     bad_channels = dataset.attrs["Bad_channels"]    
     # Creating dictionary
-    DataObj = create_DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels)
+    Data = DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels)
     h5.close()
-    return DataObj
+    return Data
     
-def save_dataset(DataObj,file_name,dataset_name):
+def save_dataset(Obj,file_name,dataset_name):
     '''
-    save DataObj in a dataset in a specific file_name
+    save Obj in a dataset in a specific file_name
     '''
+    # open or creating file 
     h5 = h5py.File(file_name,'a')
+    # deleting previous dataset
     if dataset_name in h5:
         del h5[dataset_name]
-    dataset  = h5.create_dataset(dataset_name,data=DataObj.data)
-    dataset.attrs.create('SampleRate[Hz]',DataObj.sample_rate)
-    dataset.attrs.create('amp_unit',DataObj.amp_unit)
-    dataset.attrs.create('Bad_channels',DataObj.bad_channels)
-    dataset.attrs.create('Channel_Labels', DataObj.ch_labels)
-    dataset.attrs.create('Time_vec_edge',[DataObj.time_vec[0],DataObj.time_vec[-1]])
+    # cheking kind of Obj
+    if Obj.htype == 'Data':
+        dataset  = h5.create_dataset(dataset_name,data=Obj.data)
+        dataset.attrs.create('htype',Obj.htype)
+        dataset.attrs.create('SampleRate[Hz]',Obj.sample_rate)
+        dataset.attrs.create('amp_unit',Obj.amp_unit)
+        dataset.attrs.create('Bad_channels',Obj.bad_channels)
+        dataset.attrs.create('Channel_Labels', Obj.ch_labels)
+        dataset.attrs.create('Time_vec_edge',[Obj.time_vec[0],Obj.time_vec[-1]])
+    elif Obj.htype == 'Spike':
+        pass       
+    
     h5.close()
     
 def loadRDH(filename):
@@ -90,9 +98,8 @@ def loadRDH(filename):
     n_points  = signal.shape[0]
     end_time  = n_points/sample_rate
     time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
-    DataObj = create_DataObj(signal,sample_rate,amp_unit,labels,time_vec,[])
-    return DataObj
-    
+    Data = DataObj(signal,sample_rate,amp_unit,labels,time_vec,[])
+    return Data
 
 def loadMAT(slice_filename,parameters_filename):
     '''
@@ -108,8 +115,8 @@ def loadMAT(slice_filename,parameters_filename):
     time_vec = Data.time_vec
     signal = Data.raw.T
     amp_unit = '$\mu V$'
-    DataObj = create_DataObj(signal,sample_rate,amp_unit,ch_labels,time_vec,[])
-    return DataObj
+    Data = DataObj(signal,sample_rate,amp_unit,ch_labels,time_vec,[])
+    return Data
     
     
 def loadSPK_waveclus(filename):

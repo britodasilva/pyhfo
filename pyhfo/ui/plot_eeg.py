@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from . import adjust_spines
 
-def plot_eeg(DataObj,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
+def plot_eeg(Data,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
              dpi=600, detrend = True, envelope=False, plot_bad = False, exclude = [], grid=True, 
              xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],**kwargs):
     """
@@ -36,14 +36,14 @@ def plot_eeg(DataObj,start_sec = 0, window_size = 10, amp = 200, figure_size = (
         spines ['left', 'bottom'] 
     """
     #geting data from Data_dict
-    data = DataObj.data
-    time_vec    = DataObj.time_vec
-    sample_rate = DataObj.sample_rate
-    ch_labels   = DataObj.ch_labels
+    data = Data.data
+    time_vec    = Data.time_vec
+    sample_rate = Data.sample_rate
+    ch_labels   = Data.ch_labels
     if plot_bad:
         badch = np.array([],dtype=int) # a empty array 
     else:
-        badch = DataObj.bad_channels
+        badch = Data.bad_channels
      
     if type(exclude) == list:
        for item in exclude:

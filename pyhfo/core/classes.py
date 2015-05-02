@@ -13,7 +13,7 @@ import numpy as np
 import math
 
 
-class create_DataObj(object):
+class DataObj(object):
     ''' 
     Create a Data object
     data: numpy array - points x channels
@@ -24,7 +24,7 @@ class create_DataObj(object):
     time_vec: numpy array - (points,)
     bad_channels: list of int
     '''
-
+    htype = 'Data'
     def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None):
         self.npoints, self.n_channels = data.shape
         if self.npoints < self.n_channels: 
@@ -54,6 +54,8 @@ class create_DataObj(object):
     
         
 class SpikeObj(object):
+    
+    htype = 'Spike'
     def __repr__(self):
         return str(self.tstamp)
 
@@ -171,8 +173,8 @@ class HFOObj(object):
     def __repr__(self):
         return self.evtype
 
-    def __init__(self,evtype,ch,tstamp,other):
-        self.evtype = evtype
+    def __init__(self,htype,ch,tstamp,other):
+        self.htype = htype
         self.tstamp = tstamp
         self.ch = ch
         self.other = other
