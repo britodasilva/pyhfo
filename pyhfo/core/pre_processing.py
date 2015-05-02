@@ -203,7 +203,7 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
             print 'Filtering channel ' + labels[ch]
             filtered[:,ch] = sig.filtfilt(b,np.array([1]),signal[:,ch])
             
-    newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channel)
+    newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
     return newData        
     
     
