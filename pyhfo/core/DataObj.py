@@ -6,6 +6,10 @@ Created on Sat May  2 15:46:39 2015
 """
 from pyhfo.ui import plot_eeg
 import numpy as np
+import matplotlib.pyplot as plt
+from IPython.html import widgets # Widget definitions
+from IPython.display import display, clear_output # Used to display widgets in the notebook
+
 
 class DataObj(object):
     ''' 
@@ -52,6 +56,57 @@ class DataObj(object):
             self.bad_channels = []
         else:
             self.bad_channels = bad_channels
+
+
+
+
     
-    def plot(self,*param,**kwargs):
-        plot_eeg(self,*param,**kwargs)
+
+    
+    def plot(self,start_sec = 0, window_size = 10, figure_size = (15,8),
+             dpi=600,**kwargs):
+        
+                 
+        def f_button(clicked):
+            start = test.add(10)
+            clear_output()
+            plot_eeg(self,start,window_size,**kwargs)
+        
+        def b_button(clicked):
+            start = test.add(-10)
+            clear_output()
+            plot_eeg(self,start,window_size,**kwargs)        
+        
+        # Creating the figure 
+        f = plt.figure(figsize=figure_size,dpi=dpi)
+        # creating the axes
+        ax = f.add_subplot(111)
+        if 'start_sec' in kwargs:
+            start_sec = kwargs['start_sec']
+        else:
+            start_sec = 0
+        plot_eeg(self,start_sec,window_size,subplot = ax, **kwargs)
+        #plt.close(fig)
+        test = Index(start_sec)
+            
+        buttonf = widgets.Button(description = ">>")
+        buttonb = widgets.Button(description = "<<")
+            
+        buttonf.on_click(f_button)
+        buttonb.on_click(b_button)
+        vbox = widgets.Box()
+        vbox.children = [buttonb,buttonf]        
+        display(vbox)
+
+            
+        
+class Index(object):
+    def __init__(self,start_sec):
+        self.ind = start_sec
+    def add(self,num):
+        self.ind += num
+        return self.ind
+            
+            
+        
+        
