@@ -67,15 +67,6 @@ def loadRDH(filename):
     Created to load 64 channels at port A -  code need change if use diferent configuration. 
     It use RHD.py file to read and return Data_dict
     '''
-<<<<<<< HEAD
-    h5 = h5py.File(file_name,'a')
-    data = Data_dict['data']
-    dataset  = h5.create_dataset(dataset_name,data=data)
-    dataset.attrs.create('SampleRate[Hz]',Data_dict['sample_rate'])
-    dataset.attrs.create('Bad_channels',Data_dict['bad_channels'])
-    dataset.attrs.create('Channel_Labels', Data_dict['ch_labels'])
-    h5.close()
-=======
     # load file
     myData = RHD.openRhd(filename)
     # get sample rate
@@ -141,4 +132,3 @@ def loadSPK_waveclus(filename):
     return SpkObj
     
     
->>>>>>> a196ca535b7a4fa792cb51e1600ace1ff2e5914f
