@@ -17,23 +17,39 @@ def plot_eeg(Data,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,
              xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],**kwargs):
     """
     Function to plot EEG signal 
-    Inputs:
-        Data_dict - data dictionary  
-        time_vec - numpy array with time vector
-        sample_rate : sample rate in Hz
-        start_sec [0 - default] - the start second to plot (interger)
-        window_size [10] - Size of window in second (interger)
-        amp [200] - Amplitude between channels in plot (interger)
-        figure_size [(15,8)] - Size of figure, tuple of integers with width, height in inches (tuple)
-        detrend [False] - detrend each line before filter
-        envelop [False] - plot the amplitude envelope by hilbert transform
-        plot_bad [False] - if False, exclude bad channels from plot
-        exclude - list of channels to exclude
-        gride [True] - plot grid
-        xtickspace [1] - distance of tick
-        saveplot [None] - String with the name to save (ex: 'Figura.png')
-        subplot [None] - axes of figure where figure should plot
-        spines ['left', 'bottom'] 
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to plot
+    start_sec: int, optional
+        0  (defaut) - The start second from begining of file to plot (n+time_vev[1] to start at second n) 
+    window_size: int, optional
+        10 (default) - Size of window in second 
+    amp: int
+        200 (default) - Amplitude between channels in plot 
+    figure_size: tuple
+    (15,8) (default) - Size of figure, tuple of integers with width, height in inches 
+    detrend: boolean  
+        False (default) - detrend each line before filter
+    envelop: boolean 
+        False (default) - plot the amplitude envelope by hilbert transform
+    plot_bad: boolean
+        False (default) - exclude bad channels from plot
+    exclude: list 
+        Channels to exclude from plot
+    gride: boolean
+        True (default) - plot grid
+    xtickspace: int 
+        1 (default) - distance of tick in seconds
+    saveplot: str
+        None (default) - Don't save
+        String with the name to save (ex: 'Figura.png')
+    subplot: matplotlib axes 
+        None (default) - create a new figure
+        ax - axes of figure where figure should plot
+    spines: str
+        ['left', 'bottom'] (default) - plot figure with left and bottom spines only
+    **kwargs: matplotlib arguments
     """
     #geting data from Data_dict
     data = Data.data

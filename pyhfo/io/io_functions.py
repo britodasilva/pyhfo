@@ -9,18 +9,32 @@ import h5py
 import numpy as np
 import RHD
 import scipy.io as sio
-from pyhfo.core import DataObj, SpikeObj, SpikeList
+from pyhfo.core import DataObj, SpikeObj, EventList
 
     
-def open_dataset(file_name,dataset_name):
+def open_dataset(file_name,dataset_name,htype = 'auto'):
     '''
-    open a dataset in a specific file_name, return DataObj
+    open a dataset in a specific file_name
+    
+    Parameters
+    ----------
+    file_name: str 
+        Name of the HDF5 (.h5) file 
+    dataset_name: str
+        Name of dataset to open
+    htype: str, optional
+        auto (the default) - read htype from HDF file 
+        Data - DataObj type
+        Spike - SpikeObj type
+        hfo - hfoObj type
     '''
     # reading h5 file
     h5 = h5py.File(file_name,'r+')
     # loading dataset
     dataset = h5[dataset_name]
-        
+    # getting htype
+    if htype == 'auto':
+        htype = dataset.attrs['htype']      
     
     # Sample Rate attribute
     sample_rate = dataset.attrs['SampleRate[Hz]']
@@ -50,6 +64,15 @@ def open_dataset(file_name,dataset_name):
 def save_dataset(Obj,file_name,dataset_name):
     '''
     save Obj in a dataset in a specific file_name
+       
+    Parameters
+    ----------
+    obj: DataObj
+        DataObj to save
+    file_name: str 
+        Name of the HDF5 (.h5) file 
+    dataset_name: str
+        Name of dataset to open
     '''
     # open or creating file 
     h5 = h5py.File(file_name,'a')
@@ -73,7 +96,13 @@ def save_dataset(Obj,file_name,dataset_name):
 def loadRDH(filename):
     ''' 
     Created to load 64 channels at port A -  code need change if use diferent configuration. 
-    It use RHD.py file to read and return Data_dict
+    It use RHD.py file to read and return DataObj
+    
+    Parameters
+    ----------
+    file_name: str 
+        Name of the intran (.rhd) file 
+    
     '''
     # load file
     myData = RHD.openRhd(filename)
@@ -105,6 +134,14 @@ def loadMAT(slice_filename,parameters_filename):
     '''
     Created to convert .mat files with specific configuration for ECoG data of Newcastle Hospitals and create a dict.
     If you want to load other .mat file, use scipy.io. loadmat and create_DataObj
+    
+    Parameters
+    ----------
+    slice_filename: str 
+        Name of the slice (.mat) file 
+    parameters_filename: str 
+        Name of the parameters (.mat) file
+    
     '''
     mat = sio.loadmat(parameters_filename, struct_as_record=False, squeeze_me=True)
     parameters = mat['parameters']
@@ -122,9 +159,12 @@ def loadMAT(slice_filename,parameters_filename):
 def loadSPK_waveclus(filename):
     '''
     load Spikes sorted by wave_clus.
-    filename - Str with file .mat
+    Parameters
+    ----------
+    filename: str
+        Name of the spike (.mat) file 
     '''
-    SpkObj = SpikeList()
+    Spikes = EventList()
     mat = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
     clusters = mat['cluster_class'][:,0]
     times = mat['cluster_class'][:,1]/1000
@@ -135,7 +175,7 @@ def loadSPK_waveclus(filename):
         clus = clusters[idx]
         feat= features[idx]
         spk = SpikeObj(waveform,tstamp,clus,feat)
-        SpkObj.__addEvent__(spk)
-    return SpkObj
+        Spikes.__addEvent__(spk)
+    return Spikes
     
     

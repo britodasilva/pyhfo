@@ -13,6 +13,13 @@ from pyhfo.core import DataObj
 def decimate(Data,q):
     '''
     Use scipy decimate to create a new DataObj with low sample rate data
+
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to resample
+    q: int
+        Quocient of resample.
     '''
     #reading data
     data = Data.data
@@ -35,7 +42,15 @@ def decimate(Data,q):
     
 def resample(Data,q):
     '''
-    Slice data with quocient q. sample_rate % q should be 0
+    Slice data with quocient q. 
+    
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to resample
+    q: int
+        Quocient of resample. Sample Rate  should be divisible by q (sample_rat % q = 0)
+
     '''
     if Data.sample_rate % q != 0:
         print 'sample_rate % q should be int'
@@ -54,6 +69,21 @@ def resample(Data,q):
 
     
 def merge(Data1,Data2,new_time = False):
+    '''    
+    Merging two DataObj
+    
+    Parameters
+    ----------
+    Data1: DataObj
+        Data object to merge
+    Data2: DataObj
+        Data object to merge
+    new_time: boolean, optional
+        False (Defautl) - merge the time_vec from the 2 DataObj
+        True - Create a new time_vec starting with 0        
+    '''
+    
+    
     # check if is the same sample rate, then get it
     if Data1.sample_rate != Data2.sample_rate:
         raise Exception('Data object should have same sample_rate')
@@ -103,6 +133,14 @@ def merge(Data1,Data2,new_time = False):
 def add_bad(Data,channels):
     ''' 
     Add bad channels to the list
+    
+    Parameters
+    ----------
+    Data: DataObj
+        Data object
+    
+    channels: str, int or list
+        Channels to be added
     '''
     def adding(Data,item):
         if type(item) == str:
@@ -122,6 +160,15 @@ def add_bad(Data,channels):
 def remove_bad(Data,channels):
     ''' 
     Remove channels of the bad list
+    
+    Parameters
+    ----------
+    Data: DataObj
+        Data object
+    
+    channels: str, int or list
+        Channels to be removed
+    
     '''
     def removing(Data,item):
         if type(item) == str:
@@ -144,7 +191,12 @@ def remove_bad(Data,channels):
    
 def create_avg(Data):
     ''' 
-    Get Data_dict, make averege montagem excluding bad_channels
+    Create averege montagem excluding bad_channels
+    
+    Parameters
+    ----------
+    Data: DataObj
+        Data object
     '''
     # get non-bad channels index
     index = [ch for ch in range(Data.n_channels) if ch not in Data.bad_channels]
@@ -164,7 +216,22 @@ def create_avg(Data):
     
 def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5)):
     '''
-    Filter EEG Data dict. Create a high pass filter if only have low_cut, a low pass filter if only has a high_cut and a pass band filter if has both. 
+    Filt EEG Data object with FIR filter. 
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to filt
+    low_cut: int
+        Low cut frequency. If None, generate a low pass filter with cut 
+        frequency in high_cut.
+    high_cut: int
+        High cut frequency. If None, generate a high pass filter with cut 
+        frequency in low_cut.
+    order: int, optional
+        None (default) - Order of the filter calculated as 1/10 of sample rate
+    window : string or tuple of string and parameter values
+        Desired window to use. See `scipy.signal.get_window` for a list
+        of windows and required parameters.
     '''
     if low_cut == None and high_cut == None:
         raise Exception('You should determine the cutting frequencies')
