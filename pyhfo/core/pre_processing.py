@@ -216,7 +216,8 @@ def create_avg(Data):
     
 def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5)):
     '''
-    Filt EEG Data object with FIR filter. 
+    Filt EEG Data object with FIR filter.
+    
     Parameters
     ----------
     Data: DataObj

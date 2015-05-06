@@ -100,23 +100,38 @@ def plot_eeg(Data,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,
     yticklocs = []
     yticklabel = [] 
     ch_l = 1
-    # Loop to plot each channel
-    for ch in [x for x in range(data.shape[1]) if x not in badch]:
+    if len(data.shape) == 1:
         # in the axes, plot the raw signal for each channel with a amp diference 
         if detrend:
-            sp.plot(time_vec[time_window],(ch_l)*amp + sig.detrend(data[time_window,ch]),**kwargs)
+            sp.plot(time_vec[time_window],(ch_l)*amp + sig.detrend(data[time_window]),**kwargs)
         else:
-            sp.plot(time_vec[time_window],(ch_l)*amp + data[time_window,ch],**kwargs)
+            sp.plot(time_vec[time_window],(ch_l)*amp + data[time_window],**kwargs)
         if envelope:
-            sp.plot(time_vec[time_window],(ch_l)*amp + np.abs(sig.hilbert(data[time_window,ch])),**kwargs)
+            sp.plot(time_vec[time_window],(ch_l)*amp + np.abs(sig.hilbert(data[time_window])),**kwargs)
         # appeng the channel label and the tick location
         if ch_labels is None:
             yticklabel.append(ch_l)            
         else:
-            yticklabel.append(ch_labels[ch])
-            
+            yticklabel.append(ch_labels[0])
         yticklocs.append((ch_l)*amp)
-        ch_l += 1
+    else:
+        # Loop to plot each channel
+        for ch in [x for x in range(data.shape[1]) if x not in badch]:
+            # in the axes, plot the raw signal for each channel with a amp diference 
+            if detrend:
+                sp.plot(time_vec[time_window],(ch_l)*amp + sig.detrend(data[time_window,ch]),**kwargs)
+            else:
+                sp.plot(time_vec[time_window],(ch_l)*amp + data[time_window,ch],**kwargs)
+            if envelope:
+                sp.plot(time_vec[time_window],(ch_l)*amp + np.abs(sig.hilbert(data[time_window,ch])),**kwargs)
+            # appeng the channel label and the tick location
+            if ch_labels is None:
+                yticklabel.append(ch_l)            
+            else:
+                yticklabel.append(ch_labels[ch])
+                
+            yticklocs.append((ch_l)*amp)
+            ch_l += 1
 
     adjust_spines(sp, spines)
     if len(spines) > 0:

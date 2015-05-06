@@ -5,6 +5,7 @@ Created on Sat May  2 15:46:39 2015
 @author: anderson
 """
 from pyhfo.ui import plot_eeg
+from .IndexObj import IndexObj
 import numpy as np
 import matplotlib.pyplot as plt
 from IPython.html import widgets # Widget definitions
@@ -35,7 +36,11 @@ class DataObj(object):
     '''
     htype = 'Data'
     def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None):
-        self.npoints, self.n_channels = data.shape
+        if len(data.shape) == 1:
+            self.n_channels = 1
+            self.npoints = data.shape[0]
+        else:
+            self.npoints, self.n_channels = data.shape
         if self.npoints < self.n_channels: 
             raise Exception('data should be numpy array points x channels')        
         self.data = data
@@ -57,15 +62,46 @@ class DataObj(object):
         else:
             self.bad_channels = bad_channels
 
-
-
-
-    
-
-    
+   
     def plot(self,start_sec = 0, window_size = 10, figure_size = (15,8),
              dpi=600,**kwargs):
+        ''' 
+        plot DataObj
         
+        Parameters
+        ----------
+        start_sec: int, optional
+            0  (defaut) - The start second from begining of file to plot (n+time_vev[1] to start at second n) 
+        window_size: int, optional
+            10 (default) - Size of window in second 
+        amp: int
+            200 (default) - Amplitude between channels in plot 
+        figure_size: tuple
+            (15,8) (default) - Size of figure, tuple of integers with width, height in inches 
+        dpi: int
+            600 - DPI resolution
+        detrend: boolean  
+            False (default) - detrend each line before filter
+        envelop: boolean 
+            False (default) - plot the amplitude envelope by hilbert transform
+        plot_bad: boolean
+            False (default) - exclude bad channels from plot
+        exclude: list 
+            Channels to exclude from plot
+        gride: boolean
+            True (default) - plot grid
+        xtickspace: int 
+            1 (default) - distance of tick in seconds
+        saveplot: str
+            None (default) - Don't save
+            String with the name to save (ex: 'Figura.png')
+        subplot: matplotlib axes 
+            None (default) - create a new figure
+            ax - axes of figure where figure should plot
+        spines: str
+            ['left', 'bottom'] (default) - plot figure with left and bottom spines only
+        **kwargs: matplotlib arguments        
+        '''
                  
         def f_button(clicked):
             start = test.add(10)
@@ -83,7 +119,7 @@ class DataObj(object):
         ax = f.add_subplot(111)
         plot_eeg(self,start_sec,window_size,subplot = ax, **kwargs)
         #plt.close(fig)
-        test = Index(start_sec)
+        test = IndexObj(start_sec)
             
         buttonf = widgets.Button(description = ">>")
         buttonb = widgets.Button(description = "<<")
@@ -96,12 +132,7 @@ class DataObj(object):
 
             
         
-class Index(object):
-    def __init__(self,start_sec):
-        self.ind = start_sec
-    def add(self,num):
-        self.ind += num
-        return self.ind
+
             
             
         

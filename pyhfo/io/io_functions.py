@@ -36,61 +36,87 @@ def open_dataset(file_name,dataset_name,htype = 'auto'):
     if htype == 'auto':
         htype = dataset.attrs['htype']      
     
-    # Sample Rate attribute
-    sample_rate = dataset.attrs['SampleRate[Hz]']
-    n_points         = dataset.shape[0]
-    end_time         = n_points/sample_rate
-    # Amplitude Unit
-    if 'amp_unit' in dataset.attrs:
-        amp_unit = dataset.attrs['amp_unit']
-    else:
-        amp_unit = 'AU'
-    # Time vector
-    if 'Time_vec_edge' in dataset.attrs:
-        edge = dataset.attrs['Time_vec_edge']
-        time_vec = np.linspace(edge[0],edge[1],n_points,endpoint=False)
-    else:
-        time_vec = np.linspace(0,end_time,n_points,endpoint=False)
-    # Check if has 'Bad_channels' attribute, if not, create one empty
-    if len([x for x in dataset.attrs.keys() if x == 'Bad_channels']) == 0:
-        dataset.attrs.create("Bad_channels",[],dtype=int)
-    # Load bad channels
-    bad_channels = dataset.attrs["Bad_channels"]    
-    # Creating dictionary
-    Data = DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels)
+    if htype == 'Data':
+        # Sample Rate attribute
+        sample_rate = dataset.attrs['SampleRate[Hz]']
+        n_points         = dataset.shape[0]
+        end_time         = n_points/sample_rate
+        # Amplitude Unit
+        if 'amp_unit' in dataset.attrs:
+            amp_unit = dataset.attrs['amp_unit']
+        else:
+            amp_unit = 'AU'
+        # Time vector
+        if 'Time_vec_edge' in dataset.attrs:
+            edge = dataset.attrs['Time_vec_edge']
+            time_vec = np.linspace(edge[0],edge[1],n_points,endpoint=False)
+        else:
+            time_vec = np.linspace(0,end_time,n_points,endpoint=False)
+        # Check if has 'Bad_channels' attribute, if not, create one empty
+        if len([x for x in dataset.attrs.keys() if x == 'Bad_channels']) == 0:
+            dataset.attrs.create("Bad_channels",[],dtype=int)
+        # Load bad channels
+        bad_channels = dataset.attrs["Bad_channels"]    
+        # Creating dictionary
+        Data = DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels)
+        
+    elif htype == 'list':
+        keys  = dataset.keys()
+        Data = EventList()
+        for k in keys:
+            waveform =  dataset[k][:]
+            tstamp = dataset[k].attrs['tstamp']
+            clus = dataset[k].attrs['cluster']
+            feat = dataset[k].attrs['features'] 
+            spk = SpikeObj(waveform,tstamp,clus,feat)
+            Data.__addEvent__(spk)
+            
+    
     h5.close()
     return Data
     
-def save_dataset(Obj,file_name,dataset_name):
+def save_dataset(Obj,file_name,obj_name):
     '''
     save Obj in a dataset in a specific file_name
        
     Parameters
     ----------
-    obj: DataObj
+    obj: DataObj, list
         DataObj to save
+        list object to save
     file_name: str 
         Name of the HDF5 (.h5) file 
-    dataset_name: str
-        Name of dataset to open
+    obj_name: str
+        if obj is DataOnj, Name of dataset; 
+        if obj is a list, Name of group;
     '''
     # open or creating file 
     h5 = h5py.File(file_name,'a')
     # deleting previous dataset
-    if dataset_name in h5:
-        del h5[dataset_name]
+    if obj_name in h5:
+        del h5[obj_name]
     # cheking kind of Obj
     if Obj.htype == 'Data':
-        dataset  = h5.create_dataset(dataset_name,data=Obj.data)
+        dataset  = h5.create_dataset(obj_name,data=Obj.data)
         dataset.attrs.create('htype',Obj.htype)
         dataset.attrs.create('SampleRate[Hz]',Obj.sample_rate)
         dataset.attrs.create('amp_unit',Obj.amp_unit)
         dataset.attrs.create('Bad_channels',Obj.bad_channels)
         dataset.attrs.create('Channel_Labels', Obj.ch_labels)
         dataset.attrs.create('Time_vec_edge',[Obj.time_vec[0],Obj.time_vec[-1]])
-    elif Obj.htype == 'Spike':
-        pass       
-    
+    elif Obj.htype == 'list':
+        group = h5.create_group(obj_name)
+        group.attrs.create('htype',Obj.htype)
+        for idx, ev in enumerate(Obj.event):
+            name = ev.htype + '_' + str(idx)
+            if ev.htype == 'Spike':
+                dataset  = group.create_dataset(name,data=ev.waveform)
+                dataset.attrs.create('htype',ev.htype)
+                dataset.attrs.create('tstamp',ev.tstamp)
+                dataset.attrs.create('cluster',ev.cluster)
+                dataset.attrs.create('features',ev.features)
+            elif ev.htype == 'HFO':
+                pass
     h5.close()
     
 def loadRDH(filename):
