@@ -17,6 +17,8 @@ class SpikeObj(object):
         self.tstamp = tstamp
         self.cluster = cluster
         self.features = features
+
+        
     def plot(self,subplot = None, spines = ['left', 'bottom'],
              figure_size = (5,5),dpi=600,**kwargs):
         plot_single_spk(self,subplot, spines,figure_size,dpi,**kwargs)

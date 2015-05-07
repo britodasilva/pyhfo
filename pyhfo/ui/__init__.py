@@ -9,3 +9,4 @@ ui __init__ : User Interface Module
 from adjust_spines import adjust_spines
 from plot_eeg import plot_eeg
 from plot_spike import plot_single_spk, plot_spk_cluster
+from plot_hfo import plot_single_hfo

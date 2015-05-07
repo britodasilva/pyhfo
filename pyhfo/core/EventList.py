@@ -6,7 +6,7 @@ Created on Sat May  2 16:01:08 2015
 """
 import numpy as np
 from .IndexObj import IndexObj
-from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines
+from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines,plot_single_hfo
 from IPython.html import widgets # Widget definitions
 from IPython.display import display, clear_output # Used to display widgets in the notebook
 import matplotlib.pyplot as plt
@@ -15,8 +15,11 @@ import matplotlib.patches as patches
 
 
 class EventList(object):
-    event = [] 
-    htype = 'list'
+    def __init__(self,ch_labels,time_edge):
+        self.htype = 'list'
+        self.event = []
+        self.ch_labels = ch_labels
+        self.time_edge = time_edge
     def __addEvent__(self,obj):
         self.event.append(obj)
     def __removeEvent__(self,idx):
@@ -56,22 +59,29 @@ class EventList(object):
             clear_output()
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
-            plt.title('Event ' + str(idx))
+            if self.event[idx].htype == 'HFO':
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi)
+            plt.suptitle('Event ' + str(idx))
         
         def b_button(clicked):
             idx = event.add(-1)
             clear_output()
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)  
-            plt.title('Event ' + str(idx))
+            if self.event[idx].htype == 'HFO':
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi)
+            plt.suptitle('Event ' + str(idx))
         
-        # Creating the figure 
-        f = plt.figure(figsize=figure_size,dpi=dpi)
-        # creating the axes
-        ax = f.add_subplot(111)
+        
         if self.event[ev].htype == 'Spike':
+            # Creating the figure 
+            f = plt.figure(figsize=figure_size,dpi=dpi)
+            # creating the axes
+            ax = f.add_subplot(111)
             plot_single_spk(self.event[ev], subplot = ax, figure_size=figure_size, dpi = dpi,**kwargs) 
-        plt.title('Event ' + str(ev))
+        if self.event[ev].htype == 'HFO':
+            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi)
+        plt.suptitle('Event ' + str(ev))
         #plt.close(fig)
         event = IndexObj(ev)
             
@@ -172,7 +182,7 @@ class EventList(object):
             c +=1
             
             
-    def rastergram(self, ax = None, spines = ['left'],time_vec = None,ch_labels = None, exclude = [],figure_size=(15,5),dpi=600):
+    def rastergram(self, ax = None, spines = ['left'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True):
         """
         Plot rastergram 
         
@@ -183,8 +193,8 @@ class EventList(object):
             ax - axes of figure where figure should plot
         spines: str
             ['left', 'bottom'] (default) - plot figure with left and bottom spines only
-        time_vec: vector or tupple
-            Determine the x-axis limits. Need at least 2 values, if more (a vector), get the first and the last values.
+        time_edge: tupple
+            Determine the x-axis limits. 
         exclude: list 
             Channels/Cluster to exclude from plot
         figure_size: tuple
@@ -203,33 +213,29 @@ class EventList(object):
             cluster  = self.__getlist__('cluster')
         elif htype == 'HFO':
             cluster  = self.__getlist__('channel')
+        if time_edge == None:
+            time_edge = self.time_edge
+                
         num_clus = int(np.max(cluster))+1
         
         label = []
         c_l = 0
         for clus in [x for x in range(num_clus) if x not in exclude]:
+            label.append(self.ch_labels[clus])
             if htype == 'Spike':
-                if ch_labels == None:
-                    label.append('Cluster ' + str(clus))
-                else:
-                    label.append(ch_labels[clus])
                 objs = [x for x in self.event if x.cluster == clus]
             elif htype == 'HFO':
-                if ch_labels == None:
-                    label.append('Channel ' + str(clus))
-                else:
-                    label.append(ch_labels[clus])
                 objs = [x for x in self.event if x.channel == clus]
-                       
             for ev in objs:
                 rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
                 ax.add_patch(rect)
+                
+            if line:
+                plt.hlines(c_l,time_edge[0],time_edge[1],colors='c')
             c_l += 1
-        tstamp = self.__getlist__('tstamp')
         ax.set_ylim(0,c_l)
-        if time_vec != None:
-            ax.set_xlim(time_vec[0],time_vec[-1])
-        else:
-            ax.set_xlim(tstamp[0],tstamp[-1])
+        ax.set_xlim(time_edge[0],time_edge[-1])
         plt.yticks(np.arange(c_l)+0.5,label, size=16)
         adjust_spines(ax, spines)
+        
+        

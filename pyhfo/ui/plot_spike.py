@@ -9,7 +9,6 @@ Created on Sat May  2 17:11:16 2015
 from __future__ import division
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.signal as sig
 from . import adjust_spines
 
 def plot_single_spk(spk,subplot = None, spines = ['left', 'bottom'],
