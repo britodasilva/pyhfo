@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from . import adjust_spines
 
-def plot_single_hfo(hfo, envelope = True, 
-                    figure_size = (15,10),dpi=600):
+def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], 
+                    figure_size = (15,10),dpi=600,saveplot = None):
     """
     Function to plot single Spike
     
@@ -33,24 +33,27 @@ def plot_single_hfo(hfo, envelope = True,
     f = plt.figure(figsize=figure_size,dpi=dpi)
     # number of points
     npoints = hfo.waveform.shape[0]
+    time_v = np.linspace(-1,1,npoints,endpoint=True)
     # creating the axes
     ax1 = f.add_subplot(311)
-    ax1.plot(range(npoints),hfo.waveform[:,0],'b')
-    ax1.plot(range(hfo.start_idx,hfo.end_idx),hfo.waveform[hfo.start_idx:hfo.end_idx,0],'k')
-    adjust_spines(ax1, ['left'])
+    ax1.plot(time_v,hfo.waveform[:,0],'b')
+    ax1.plot(time_v[hfo.start_idx:hfo.end_idx],hfo.waveform[hfo.start_idx:hfo.end_idx,0],'k')
     
+    adjust_spines(ax1, ['left'])
+    ax1.set_xlim(xlim)
     
     
     ax2 = f.add_subplot(312)
     filt = hfo.waveform[:,1]
-    ax2.plot(range(npoints),filt)    
-    ax2.plot(range(hfo.start_idx,hfo.end_idx),filt[hfo.start_idx:hfo.end_idx],'k')
+    ax2.plot(time_v,filt)    
+    ax2.plot(time_v[hfo.start_idx:hfo.end_idx],filt[hfo.start_idx:hfo.end_idx],'k')
     if envelope:
-        ax2.plot(range(npoints),np.abs(sig.hilbert(filt)))
+        ax2.plot(time_v,np.abs(sig.hilbert(filt)))
     
 
-
+    
     adjust_spines(ax2, ['left', 'bottom'])
+    ax2.set_xlim(xlim)
     
     ax3 = f.add_subplot(313)
     
@@ -64,4 +67,8 @@ def plot_single_hfo(hfo, envelope = True,
     ax3.set_title('peak freq = ' + str(peakFreaq))
     adjust_spines(ax3, ['left', 'bottom'])
     
-    
+    if saveplot != None:
+        if type(saveplot) == str: 
+            plt.savefig(saveplot, bbox_inches='tight')
+        else:
+            raise Exception('saveplot should be a string')

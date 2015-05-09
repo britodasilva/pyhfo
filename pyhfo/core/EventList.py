@@ -35,7 +35,7 @@ class EventList(object):
             attribute = np.append(attribute,vars(ev)[attr])
         return attribute
     
-    def plot_event(self, ev = 0,figure_size = (5,5), dpi=600,**kwargs):
+    def plot_event(self, ev = 0,figure_size = (5,5), dpi=600,xlim=[-1,1],saveplot = None,**kwargs):
         """
         Plot events
         
@@ -60,7 +60,7 @@ class EventList(object):
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
             if self.event[idx].htype == 'HFO':
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi)
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim)
             plt.suptitle('Event ' + str(idx))
         
         def b_button(clicked):
@@ -69,7 +69,7 @@ class EventList(object):
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)  
             if self.event[idx].htype == 'HFO':
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi)
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim)
             plt.suptitle('Event ' + str(idx))
         
         
@@ -80,7 +80,7 @@ class EventList(object):
             ax = f.add_subplot(111)
             plot_single_spk(self.event[ev], subplot = ax, figure_size=figure_size, dpi = dpi,**kwargs) 
         if self.event[ev].htype == 'HFO':
-            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi)
+            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi,xlim=xlim,saveplot=saveplot)
         plt.suptitle('Event ' + str(ev))
         #plt.close(fig)
         event = IndexObj(ev)
@@ -231,7 +231,7 @@ class EventList(object):
                 ax.add_patch(rect)
                 
             if line:
-                plt.hlines(c_l,time_edge[0],time_edge[1],colors='c')
+                plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
             c_l += 1
         ax.set_ylim(0,c_l)
         ax.set_xlim(time_edge[0],time_edge[-1])

@@ -78,30 +78,56 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
         order = int(sample_rate/10)
     info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) 
     HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1])) 
-    for ch in range(nch):
-        if ch not in filtOBj.bad_channels:
-            print 'Finding in channel ' + filtOBj.ch_labels[ch]
-            filt = filtOBj.data[:,ch]
-            env  = np.abs(sig.hilbert(filt))
-            if ths_method == 'STD':
-                ths_value = np.mean(env) + ths*np.std(env)
-            elif ths_method == 'Tukey':
-                ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
-            start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
-            for s, e in zip(start, end):
-                index = np.arange(s,e)
-                HFOwaveform = env[index]
-                tstamp_points = s + np.argmax(HFOwaveform)
-                tstamp = Data.time_vec[tstamp_points]
-                Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
-                
-                tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-                waveform = np.empty((Lindex.shape[0],2))
-                waveform[:] = np.NAN
-                waveform[:,0] = Data.data[Lindex,ch]
-                waveform[:,1] = filtOBj.data[Lindex,ch]
-                start_idx = np.nonzero(Lindex==s)[0][0]
-                end_idx = np.nonzero(Lindex==e)[0][0]
-                hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
-                HFOs.__addEvent__(hfo)
+    if nch == 1:
+        print 'Finding in channel'
+        filt = filtOBj.data
+        env  = np.abs(sig.hilbert(filt))
+        if ths_method == 'STD':
+            ths_value = np.mean(env) + ths*np.std(env)
+        elif ths_method == 'Tukey':
+            ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
+        start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
+        for s, e in zip(start, end):
+            index = np.arange(s,e)
+            HFOwaveform = env[index]
+            tstamp_points = s + np.argmax(HFOwaveform)
+            tstamp = Data.time_vec[tstamp_points]
+            Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
+            
+            tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
+            waveform = np.empty((Lindex.shape[0],2))
+            waveform[:] = np.NAN
+            waveform[:,0] = Data.data[Lindex]
+            waveform[:,1] = filtOBj.data[Lindex]
+            start_idx = np.nonzero(Lindex==s)[0][0]
+            end_idx = np.nonzero(Lindex==e)[0][0]
+            hfo = hfoObj(0,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
+            HFOs.__addEvent__(hfo)
+    else:
+        for ch in range(nch):
+            if ch not in filtOBj.bad_channels:
+                print 'Finding in channel ' + filtOBj.ch_labels[ch]
+                filt = filtOBj.data[:,ch]
+                env  = np.abs(sig.hilbert(filt))
+                if ths_method == 'STD':
+                    ths_value = np.mean(env) + ths*np.std(env)
+                elif ths_method == 'Tukey':
+                    ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
+                start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
+                for s, e in zip(start, end):
+                    index = np.arange(s,e)
+                    HFOwaveform = env[index]
+                    tstamp_points = s + np.argmax(HFOwaveform)
+                    tstamp = Data.time_vec[tstamp_points]
+                    Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
+                    
+                    tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
+                    waveform = np.empty((Lindex.shape[0],2))
+                    waveform[:] = np.NAN
+                    waveform[:,0] = Data.data[Lindex,ch]
+                    waveform[:,1] = filtOBj.data[Lindex,ch]
+                    start_idx = np.nonzero(Lindex==s)[0][0]
+                    end_idx = np.nonzero(Lindex==e)[0][0]
+                    hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
+                    HFOs.__addEvent__(hfo)
     return HFOs

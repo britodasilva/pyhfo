@@ -24,13 +24,20 @@ def decimate(Data,q):
     #reading data
     data = Data.data
     # get shape
-    npoints, nch = Data.data.shape
+    if len(data.shape) == 1:
+        nch = 1
+        npoints = data.shape[0]
+    else:
+        npoints, nch = data.shape
     # creating a empty array
     new_data = np.empty((npoints/q,nch))
     new_data[:] = np.NAN
     # decimate each channel
-    for ch in range(nch):
-        new_data[:,ch] = sig.decimate(data[:,ch],q)
+    if nch == 1:
+        new_data = sig.decimate(data,q)
+    else:
+        for ch in range(nch):
+            new_data[:,ch] = sig.decimate(data[:,ch],q)
     # calculate new sample rate    
     new_sample_rate = Data.sample_rate/q
     # creating new time_vec
@@ -241,7 +248,11 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     sample_rate = Data.sample_rate
     time_vec = Data.time_vec
     labels = Data.ch_labels
-    npoints, nch = signal.shape
+    if len(signal.shape) == 1:
+        nch = 1
+        npoints = signal.shape[0]
+    else:
+        npoints, nch = signal.shape
     # order
     if order == None:
         numtaps = int(sample_rate/10 + 1)
@@ -266,10 +277,14 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     # Creating filtered, numpy array with the filtered signal of raw data
     filtered = np.empty((npoints,nch))
     filtered[:] = np.NAN
-    for ch in range(nch):
-        if ch not in Data.bad_channels:
-            print 'Filtering channel ' + labels[ch]
-            filtered[:,ch] = sig.filtfilt(b,np.array([1]),signal[:,ch])
+    if nch == 1:
+        print 'Filtering channel'
+        filtered = sig.filtfilt(b,np.array([1]),signal)
+    else:
+        for ch in range(nch):
+            if ch not in Data.bad_channels:
+                print 'Filtering channel ' + labels[ch]
+                filtered[:,ch] = sig.filtfilt(b,np.array([1]),signal[:,ch])
             
     newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
     return newData        

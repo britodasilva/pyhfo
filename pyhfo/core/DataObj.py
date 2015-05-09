@@ -44,7 +44,7 @@ class DataObj(object):
         if self.npoints < self.n_channels: 
             raise Exception('data should be numpy array points x channels')        
         self.data = data
-        self.sample_rate = sample_rate
+        self.sample_rate = int(sample_rate)
         self.amp_unit = amp_unit
         if ch_labels == None:
             self.ch_labels = range(self.n_channels)
@@ -104,12 +104,12 @@ class DataObj(object):
         '''
                  
         def f_button(clicked):
-            start = test.add(10)
+            start = test.add(window_size)
             clear_output()
             plot_eeg(self,start,window_size,**kwargs)
         
         def b_button(clicked):
-            start = test.add(-10)
+            start = test.add(-window_size)
             clear_output()
             plot_eeg(self,start,window_size,**kwargs)        
         
