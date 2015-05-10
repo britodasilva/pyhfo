@@ -6,13 +6,13 @@ Created on Sat May  2 16:01:08 2015
 """
 import numpy as np
 from .IndexObj import IndexObj
-from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines,plot_single_hfo
+from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines,plot_single_hfo, plot_mean_hfo
 from IPython.html import widgets # Widget definitions
 from IPython.display import display, clear_output # Used to display widgets in the notebook
 import matplotlib.pyplot as plt
 import math
 import matplotlib.patches as patches
-
+from sklearn.cluster import KMeans
 
 class EventList(object):
     def __init__(self,ch_labels,time_edge):
@@ -31,11 +31,23 @@ class EventList(object):
         return a list of atrribute
         '''
         attribute = np.array([])
+
         for ev in self.event:
-            attribute = np.append(attribute,vars(ev)[attr])
+            if hasattr(ev, attr):
+                attribute = np.append(attribute,vars(ev)[attr])
+            elif attr == 'entropy':
+                attribute = [x.entropy for x in self.__getlist__('spectrum')]
+            elif attr == 'peak_freq':
+                attribute = [x.peak_freq for x in self.__getlist__('spectrum')]
+            elif attr == 'power_index':
+                attribute = [x.power_index for x in self.__getlist__('spectrum')]
+            else:
+                raise Exception('Attribute not found')
+            
+        
         return attribute
     
-    def plot_event(self, ev = 0,figure_size = (5,5), dpi=600,xlim=[-1,1],saveplot = None,**kwargs):
+    def plot_event(self, ev = 0,figure_size = (5,5), dpi=600,xlim=[-1,1],saveplot = None, cutoff = False ,**kwargs):
         """
         Plot events
         
@@ -52,6 +64,8 @@ class EventList(object):
             (5,5) (default) - Size of figure, tuple of integers with width, height in inches 
         dpi: int
             600 - DPI resolution
+        cutoff: boolean
+            True (default) -  Fill the cuttof frequency in spectogram
         **kwargs: matplotlib arguments
         """
         def f_button(clicked):
@@ -59,8 +73,13 @@ class EventList(object):
             clear_output()
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
+            
             if self.event[idx].htype == 'HFO':
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim)
+                if cutoff:
+                    cut = self.event[ev].cutoff
+                else:
+                    cut = None
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut)
             plt.suptitle('Event ' + str(idx))
         
         def b_button(clicked):
@@ -69,7 +88,11 @@ class EventList(object):
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)  
             if self.event[idx].htype == 'HFO':
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim)
+                if cutoff:
+                    cut = self.event[ev].cutoff
+                else:
+                    cut = None
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut)
             plt.suptitle('Event ' + str(idx))
         
         
@@ -80,7 +103,11 @@ class EventList(object):
             ax = f.add_subplot(111)
             plot_single_spk(self.event[ev], subplot = ax, figure_size=figure_size, dpi = dpi,**kwargs) 
         if self.event[ev].htype == 'HFO':
-            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi,xlim=xlim,saveplot=saveplot)
+            if cutoff:
+                cut = self.event[ev].cutoff
+            else:
+                cut = None
+            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi,xlim=xlim,saveplot=saveplot,cutoff = cut)
         plt.suptitle('Event ' + str(ev))
         #plt.close(fig)
         event = IndexObj(ev)
@@ -95,7 +122,7 @@ class EventList(object):
         display(vbox)
         
         
-    def plot_cluster(self,cluster=0,color='b', spines = [], plot_mean = True,figure_size=(5,5),dpi=600):
+    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600):
         """
         Plot spike cluster. If event list contains HFO raise error. 
         
@@ -114,28 +141,51 @@ class EventList(object):
         dpi: int
             600 - DPI resolution
         """
-        htypes = self.__getlist__('htype')
-        if 'HFO' in htypes:
-            raise Exception('HFO htype not accepted')
+#        htypes = self.__getlist__('htype')
+#        if 'HFO' in htypes:
+#            raise Exception('HFO htype not accepted')
+
             
         def f_button(clicked):
             idx = event.add(1)
             clear_output()
-            plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
-            plt.title('Cluster ' + str(idx))
+            if self.event[0].htype == 'Spike':
+                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
+                
+            if self.event[0].htype == 'HFO':
+                evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==idx]
+                plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
+            plt.suptitle('Cluster ' + str(idx))
+                
         
         def b_button(clicked):
             idx = event.add(-1)
             clear_output()
-            plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi) 
-            plt.title('Cluster ' + str(idx))
+            if self.event[0].htype == 'Spike':
+                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
+                
+            if self.event[0].htype == 'HFO':
+                evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==idx]
+                plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
+            plt.suptitle('Cluster ' + str(idx))
+            
+        if self.event[0].htype == 'Spike':
+            # Creating the figure 
+            f = plt.figure(figsize=figure_size,dpi=dpi)
+            # creating the axes
+            ax = f.add_subplot(111)
+            plot_spk_cluster(self,cluster,color=color,ax = ax, spines = spines, plot_mean = plot_mean)
+         
         
-        # Creating the figure 
-        f = plt.figure(figsize=figure_size,dpi=dpi)
-        # creating the axes
-        ax = f.add_subplot(111)
-        plot_spk_cluster(self,cluster,color=color,ax = ax, spines = spines, plot_mean = plot_mean)
-        plt.title('Cluster ' + str(cluster))
+        if self.event[0].htype == 'HFO':
+            #clustering 
+            pfreq = np.array(self.__getlist__('peak_freq'))
+            ent = np.array(self.__getlist__('entropy'))
+            y= KMeans(n_clusters=2).fit(np.array([pfreq,ent]).T)
+            evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==cluster]
+            plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
+            
+        plt.suptitle('Cluster ' + str(cluster))
         #plt.close(fig)
         event = IndexObj(cluster)
             

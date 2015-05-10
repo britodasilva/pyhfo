@@ -31,5 +31,5 @@ setup(name='pyhfo',
       author_email='a.brito-da-silva1@newcastle.ac.uk',
       license='MIT',
       packages=['pyhfo','pyhfo.io','pyhfo.ui','pyhfo.core'],
-      install_requires=['numpy','matplotlib','scipy','h5py'],
+      install_requires=['numpy','matplotlib','scipy','h5py','sklearn'],
       zip_safe=False)
