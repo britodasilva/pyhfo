@@ -11,3 +11,11 @@ class IndexObj(object):
     def add(self,num):
         self.ind += num
         return self.ind
+    
+    def mul(self,num):
+        self.ind *= num
+        return self.ind
+        
+    def div(self,num):
+        self.ind *= 1./num
+        return self.ind

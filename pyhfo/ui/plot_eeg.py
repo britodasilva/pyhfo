@@ -15,7 +15,7 @@ import math
 
 def plot_eeg(Data,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,8),
              dpi=600, detrend = True, envelope=False, plot_bad = False, exclude = [], grid=True, 
-             xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],**kwargs):
+             xtickspace = 1,saveplot = None, subplot = None ,spines = ['left', 'bottom'],time_out = False, **kwargs):
     """
     Function to plot EEG signal 
     
@@ -153,7 +153,8 @@ def plot_eeg(Data,start_sec = 0, window_size = 10, amp = 200, figure_size = (15,
     
     sp.set_xlim(time_vec[time_window[0]],time_vec[time_window[-1]]+np.diff(time_vec[time_window[0:2]]))
     #sp.set_ylim(0,(ch_l)*amp)
-    
+    if time_out:
+        return time_vec[time_window[0]], time_vec[time_window[-1]]+np.diff(time_vec[time_window[0:2]]), sp
     if saveplot != None:
         if type(saveplot) == str: 
             plt.savefig(saveplot, bbox_inches='tight')

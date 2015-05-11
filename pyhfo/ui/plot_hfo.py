@@ -13,7 +13,7 @@ import scipy.signal as sig
 from . import adjust_spines
 
 def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
-                    figure_size = (15,10),dpi=600,saveplot = None):
+                    axes = None, figure_size = (15,10),dpi=600,saveplot = None):
     """
     Function to plot single Spike
     
@@ -28,14 +28,22 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
     dpi: int
         600 - DPI resolution
     """
-   
-    # Creating the figure 
-    f = plt.figure(figsize=figure_size,dpi=dpi)
+    if axes == None:
+        # Creating the figure 
+        fig = plt.figure(figsize=figure_size,dpi=dpi)
+        ax1 = fig.add_subplot(311)
+        ax2 = fig.add_subplot(312)
+        ax3 = fig.add_subplot(313)
+    else:
+        ax1 = axes[0]
+        ax2 = axes[1]
+        ax3 = axes[2]
+
     # number of points
     npoints = hfo.waveform.shape[0]
     time_v = np.linspace(-1,1,npoints,endpoint=True)
     # creating the axes
-    ax1 = f.add_subplot(311)
+    
     ax1.plot(time_v,hfo.waveform[:,0],'b')
     ax1.plot(time_v[hfo.start_idx:hfo.end_idx],hfo.waveform[hfo.start_idx:hfo.end_idx,0],'k')
     
@@ -43,7 +51,7 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
     ax1.set_xlim(xlim)
     
     
-    ax2 = f.add_subplot(312)
+    
     filt = hfo.waveform[:,1]
     ax2.plot(time_v,filt)    
     ax2.plot(time_v[hfo.start_idx:hfo.end_idx],filt[hfo.start_idx:hfo.end_idx],'k')
@@ -55,8 +63,8 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
     adjust_spines(ax2, ['left', 'bottom'])
     ax2.set_xlim(xlim)
     
-    ax3 = f.add_subplot(313)
-    hfo.spectrum.plot(cutoff = cutoff, v = v)
+    
+    hfo.spectrum.plot(cutoff = cutoff, v = v, ax = ax3)
     ax3.set_title('peak freq = ' + str(hfo.spectrum.peak_freq))
     adjust_spines(ax3, ['left', 'bottom'])
     
@@ -65,7 +73,7 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
             plt.savefig(saveplot, bbox_inches='tight')
         else:
             raise Exception('saveplot should be a string')
-            
+    plt.draw()     
             
 def plot_mean_hfo(evlist,color='blue',  xlim =[-1,1], figure_size=(10,10),dpi=600):
     """
@@ -84,24 +92,29 @@ def plot_mean_hfo(evlist,color='blue',  xlim =[-1,1], figure_size=(10,10),dpi=60
         600 - DPI resolution
     """
     f = plt.figure(figsize=figure_size,dpi=dpi)
-   
+    
+    
+    
     
     raw = np.array([]) # creating a empty array 
     filt = np.array([]) # creating a empty array
     pxx = np.array([]) # creating a empty array
     nwave, a = evlist[0].waveform.shape
+    time_v = np.linspace(-1,1,nwave,endpoint=True)
     npw, = evlist[0].spectrum.nPxx.shape
     F = evlist[0].spectrum.F
     for hfo in evlist:
         raw = np.append(raw, hfo.waveform[:,0])
+        #ax1.plot(time_v,hfo.waveform[:,0],lw=.5)
         filt = np.append(filt, hfo.waveform[:,1])
+        #ax2.plot(time_v,hfo.waveform[:,1],lw=.5)
         pxx = np.append(pxx, hfo.spectrum.nPxx)
         
     raw = raw.reshape(len(evlist),nwave)
     filt = filt.reshape(len(evlist),nwave)
     pxx = pxx.reshape(len(evlist),npw)
 
-    time_v = np.linspace(-1,1,nwave,endpoint=True)
+    
     
    
     ax1 = plt.subplot(311)

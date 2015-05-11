@@ -7,6 +7,7 @@ Created on Sat May  2 16:01:08 2015
 import numpy as np
 from .IndexObj import IndexObj
 from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines,plot_single_hfo, plot_mean_hfo
+from pyhfo.io.o_functions import save_dataset
 from IPython.html import widgets # Widget definitions
 from IPython.display import display, clear_output # Used to display widgets in the notebook
 import matplotlib.pyplot as plt
@@ -15,15 +16,29 @@ import matplotlib.patches as patches
 from sklearn.cluster import KMeans
 
 class EventList(object):
-    def __init__(self,ch_labels,time_edge):
+    def __init__(self,ch_labels,time_edge,file_name = None, dataset_name = None):
         self.htype = 'list'
         self.event = []
         self.ch_labels = ch_labels
         self.time_edge = time_edge
+        if file_name != None:
+            self.filename = file_name
+        if dataset_name != None:
+            self.datasetname = dataset_name
     def __addEvent__(self,obj):
         self.event.append(obj)
     def __removeEvent__(self,idx):
-        del self.event[idx]
+        if type(idx) == int:
+            del self.event[idx]
+        else:
+            indexes = sorted(list(idx), reverse=True)
+            for index in indexes:
+                del self.event[index]
+        
+    def delete_cluster(self,cluster):
+        clu = self.__getlist__('cluster')
+        to_remove = np.nonzero(clu == cluster)[0]
+        self.__removeEvent__(to_remove)
     def __repr__(self):
         return '%s events' % len(self.event)
     def __getlist__(self,attr):
@@ -68,8 +83,7 @@ class EventList(object):
             True (default) -  Fill the cuttof frequency in spectogram
         **kwargs: matplotlib arguments
         """
-        def f_button(clicked):
-            idx = event.add(1)
+        def ploting(self,idx):
             clear_output()
             if self.event[idx].htype == 'Spike':
                 plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
@@ -81,34 +95,19 @@ class EventList(object):
                     cut = None
                 plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut)
             plt.suptitle('Event ' + str(idx))
+            
+        def f_button(clicked):
+            idx = event.add(1)
+            ploting(self,idx)
+
         
         def b_button(clicked):
             idx = event.add(-1)
-            clear_output()
-            if self.event[idx].htype == 'Spike':
-                plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)  
-            if self.event[idx].htype == 'HFO':
-                if cutoff:
-                    cut = self.event[ev].cutoff
-                else:
-                    cut = None
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut)
-            plt.suptitle('Event ' + str(idx))
-        
-        
-        if self.event[ev].htype == 'Spike':
-            # Creating the figure 
-            f = plt.figure(figsize=figure_size,dpi=dpi)
-            # creating the axes
-            ax = f.add_subplot(111)
-            plot_single_spk(self.event[ev], subplot = ax, figure_size=figure_size, dpi = dpi,**kwargs) 
-        if self.event[ev].htype == 'HFO':
-            if cutoff:
-                cut = self.event[ev].cutoff
-            else:
-                cut = None
-            plot_single_hfo(self.event[ev], figure_size = figure_size,dpi=dpi,xlim=xlim,saveplot=saveplot,cutoff = cut)
-        plt.suptitle('Event ' + str(ev))
+            ploting(self,idx)
+
+
+        ploting(self,ev)
+
         #plt.close(fig)
         event = IndexObj(ev)
             
@@ -145,48 +144,34 @@ class EventList(object):
 #        if 'HFO' in htypes:
 #            raise Exception('HFO htype not accepted')
 
-            
-        def f_button(clicked):
-            idx = event.add(1)
+        def ploting(self,idx):
             clear_output()
             if self.event[0].htype == 'Spike':
                 plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
                 
             if self.event[0].htype == 'HFO':
-                evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==idx]
+                evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
                 plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
             plt.suptitle('Cluster ' + str(idx))
+            
+        def f_button(clicked):
+            idx = event.add(1)
+            ploting(self,idx)
+            
                 
         
         def b_button(clicked):
             idx = event.add(-1)
-            clear_output()
-            if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
-                
-            if self.event[0].htype == 'HFO':
-                evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==idx]
-                plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
-            plt.suptitle('Cluster ' + str(idx))
+            ploting(self,idx)
             
-        if self.event[0].htype == 'Spike':
-            # Creating the figure 
-            f = plt.figure(figsize=figure_size,dpi=dpi)
-            # creating the axes
-            ax = f.add_subplot(111)
-            plot_spk_cluster(self,cluster,color=color,ax = ax, spines = spines, plot_mean = plot_mean)
-         
         
         if self.event[0].htype == 'HFO':
-            #clustering 
-            pfreq = np.array(self.__getlist__('peak_freq'))
-            ent = np.array(self.__getlist__('entropy'))
-            y= KMeans(n_clusters=2).fit(np.array([pfreq,ent]).T)
-            evlist = [self.event[x] for x in range(y.labels_.shape[0]) if y.labels_[x]==cluster]
-            plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
+            if not hasattr(self.event[0],'cluster'):
+                self.HFO_clustering()
             
-        plt.suptitle('Cluster ' + str(cluster))
-        #plt.close(fig)
+        
+        ploting(self,cluster)
+
         event = IndexObj(cluster)
             
         buttonf = widgets.Button(description = ">>")
@@ -262,12 +247,11 @@ class EventList(object):
         if htype == 'Spike':
             cluster  = self.__getlist__('cluster')
         elif htype == 'HFO':
-            cluster  = self.__getlist__('channel')
+            cluster  = range(len(self.ch_labels))
         if time_edge == None:
             time_edge = self.time_edge
                 
         num_clus = int(np.max(cluster))+1
-        
         label = []
         c_l = 0
         for clus in [x for x in range(num_clus) if x not in exclude]:
@@ -289,3 +273,35 @@ class EventList(object):
         adjust_spines(ax, spines)
         
         
+    def save(self,filename = None,datasetname = None ):
+        if filename == None:
+            if hasattr(self,'filename'):
+                filename = self.filename
+                
+            else:
+                raise Exception('No file name')
+                
+        if datasetname == None:
+            if hasattr(self,'datasetname'):
+                datasetname = self.datasetname
+            else:
+                raise Exception('No dataset name')        
+     
+        save_dataset(self,filename,datasetname)
+        
+        
+    def HFO_clustering(self,n_clusters = 2, attr = ['entropy']):
+        #clustering 
+        at = np.array([])
+        for attribute in attr:
+            new_at = np.array(self.__getlist__(attribute))
+            at = np.append(at,new_at)
+        at = np.reshape(at,(len(attr),len(new_at)))
+        y= KMeans(n_clusters=n_clusters).fit(at.T)
+        for ix, hfo in enumerate(self.event):
+            hfo.__set_cluster__(y.labels_[ix])
+
+
+    def reset_cluster(self):
+        for hfo in self.event:
+            hfo.__set_cluster__(0)

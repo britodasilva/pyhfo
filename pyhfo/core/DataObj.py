@@ -5,9 +5,11 @@ Created on Sat May  2 15:46:39 2015
 @author: anderson
 """
 from pyhfo.ui import plot_eeg
+from pyhfo.io.o_functions import save_dataset
 from .IndexObj import IndexObj
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from IPython.html import widgets # Widget definitions
 from IPython.display import display, clear_output # Used to display widgets in the notebook
 
@@ -35,7 +37,7 @@ class DataObj(object):
         List - create a list of bad channels. 
     '''
     htype = 'Data'
-    def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None):
+    def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None,file_name=None,dataset_name = None):
         if len(data.shape) == 1:
             self.n_channels = 1
             self.npoints = data.shape[0]
@@ -61,10 +63,13 @@ class DataObj(object):
             self.bad_channels = []
         else:
             self.bad_channels = bad_channels
-
+        if file_name != None:
+            self.filename = file_name
+        if dataset_name != None:
+            self.datasetname = dataset_name
    
-    def plot(self,start_sec = 0, window_size = 10, figure_size = (15,8),
-             dpi=600,**kwargs):
+    def plot(self,start_sec = 0, window_size = 10, amp = 100, figure_size = (15,8),
+             dpi=600,events = None, **kwargs):
         ''' 
         plot DataObj
         
@@ -75,7 +80,7 @@ class DataObj(object):
         window_size: int, optional
             10 (default) - Size of window in second 
         amp: int
-            200 (default) - Amplitude between channels in plot 
+            100 (default) - Amplitude between channels in plot 
         figure_size: tuple
             (15,8) (default) - Size of figure, tuple of integers with width, height in inches 
         dpi: int
@@ -102,35 +107,81 @@ class DataObj(object):
             ['left', 'bottom'] (default) - plot figure with left and bottom spines only
         **kwargs: matplotlib arguments        
         '''
-                 
+        def plot_events(self,start,window_size,amp,s,e,ax):
+            color = ['blue','red']
+            for co, ev in enumerate(events):
+                tsp = ev.__getlist__('tstamp')
+                for idx, x in enumerate(tsp):
+                    if x > s and x < e:
+                        #print (ev.event[idx].start_sec,ev.event[idx].channel+.5),ev.event[idx].duration,amp
+                        rect = patches.Rectangle((ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp),ev.event[idx].duration,amp, lw=2,alpha=0.1,facecolor=color[co]) 
+                        ax.add_patch(rect)
+                        
+                    
+            
+        def ploting(self,start, ap):
+            clear_output()
+            start_sec, end_sec, ax = plot_eeg(self,start,window_size,amp = ap, figure_size=figure_size,dpi=dpi,time_out = True, **kwargs)
+            if events != None:
+                plot_events(self,start,window_size,amp = ap,s=start_sec, e=end_sec, ax=ax)
         def f_button(clicked):
-            start = test.add(window_size)
-            clear_output()
-            plot_eeg(self,start,window_size,**kwargs)
-        
+            start = sec.add(window_size)
+            aplit = apl.ind
+            ploting(self,start,aplit)
+            
         def b_button(clicked):
-            start = test.add(-window_size)
-            clear_output()
-            plot_eeg(self,start,window_size,**kwargs)        
+            start = sec.add(-window_size)
+            aplit = apl.ind
+            ploting(self,start,aplit)
+            
+        def u_button(clicked):
+            start = sec.ind
+            aplit = apl.mul(2)
+            ploting(self,start,aplit)
         
-        # Creating the figure 
-        f = plt.figure(figsize=figure_size,dpi=dpi)
-        # creating the axes
-        ax = f.add_subplot(111)
-        plot_eeg(self,start_sec,window_size,subplot = ax, **kwargs)
+        def d_button(clicked):
+            start = sec.ind
+            aplit = apl.div(2)
+            ploting(self,start,aplit)
+        
+
+        ploting(self,start_sec,amp)
         #plt.close(fig)
-        test = IndexObj(start_sec)
+        sec = IndexObj(start_sec)
+        apl = IndexObj(amp)
             
         buttonf = widgets.Button(description = ">>")
         buttonb = widgets.Button(description = "<<")
-            
+        buttonup = widgets.Button(description = "^")
+        buttondown = widgets.Button(description = "v")
+        
         buttonf.on_click(f_button)
         buttonb.on_click(b_button)
+        buttonup.on_click(u_button)
+        buttondown.on_click(d_button)
+        
+        hbox = widgets.HBox()
+        hbox.children = [buttonup,buttondown] 
         vbox = widgets.Box()
-        vbox.children = [buttonb,buttonf]        
+        vbox.children = [buttonb,buttonf,hbox]        
         display(vbox)
 
-            
+    
+    def save(self,filename = None,datasetname = None ):
+        if filename == None:
+            if hasattr(self,'filename'):
+                filename = self.filename
+                
+            else:
+                raise Exception('No file name')
+                
+        if datasetname == None:
+            if hasattr(self,'datasetname'):
+                datasetname = self.datasetname
+            else:
+                raise Exception('No dataset name')        
+     
+        save_dataset(self,filename,datasetname)            
 
 
             
