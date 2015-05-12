@@ -108,7 +108,7 @@ class DataObj(object):
         **kwargs: matplotlib arguments        
         '''
         def plot_events(self,start,window_size,amp,s,e,ax):
-            color = ['blue','red']
+            color = ['blue','red','green','gray']
             for co, ev in enumerate(events):
                 tsp = ev.__getlist__('tstamp')
                 for idx, x in enumerate(tsp):
@@ -116,6 +116,7 @@ class DataObj(object):
                         #print (ev.event[idx].start_sec,ev.event[idx].channel+.5),ev.event[idx].duration,amp
                         rect = patches.Rectangle((ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp),ev.event[idx].duration,amp, lw=2,alpha=0.1,facecolor=color[co]) 
                         ax.add_patch(rect)
+                        plt.gca().text(ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp,str(idx))
                         
                     
             

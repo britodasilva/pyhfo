@@ -75,7 +75,7 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
             raise Exception('saveplot should be a string')
     plt.draw()     
             
-def plot_mean_hfo(evlist,color='blue',  xlim =[-1,1], figure_size=(10,10),dpi=600):
+def plot_mean_hfo(evlist,color='blue',  xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None):
     """
     Function to plot cluster of HFOs
     
@@ -140,3 +140,8 @@ def plot_mean_hfo(evlist,color='blue',  xlim =[-1,1], figure_size=(10,10),dpi=60
     ax3.fill_between(F,m+s,m-s, facecolor=color, alpha=0.1)
     adjust_spines(ax3, ['left', 'bottom'])
     
+    if saveplot != None:
+        if type(saveplot) == str: 
+            plt.savefig(saveplot, bbox_inches='tight')
+        else:
+            raise Exception('saveplot should be a string')

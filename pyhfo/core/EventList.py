@@ -86,14 +86,14 @@ class EventList(object):
         def ploting(self,idx):
             clear_output()
             if self.event[idx].htype == 'Spike':
-                plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
+                plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,saveplot=saveplot,**kwargs)
             
             if self.event[idx].htype == 'HFO':
                 if cutoff:
                     cut = self.event[ev].cutoff
                 else:
                     cut = None
-                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut)
+                plot_single_hfo(self.event[idx], figure_size = figure_size,dpi=dpi,xlim=xlim,cutoff = cut,saveplot=saveplot)
             plt.suptitle('Event ' + str(idx))
             
         def f_button(clicked):
@@ -121,7 +121,7 @@ class EventList(object):
         display(vbox)
         
         
-    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600):
+    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None):
         """
         Plot spike cluster. If event list contains HFO raise error. 
         
@@ -147,11 +147,11 @@ class EventList(object):
         def ploting(self,idx):
             clear_output()
             if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
+                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi,saveplot=saveplot)
                 
             if self.event[0].htype == 'HFO':
                 evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
-                plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi)
+                plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi,saveplot=saveplot)
             plt.suptitle('Cluster ' + str(idx))
             
         def f_button(clicked):
