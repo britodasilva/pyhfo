@@ -252,12 +252,14 @@ class EventList(object):
             time_edge = self.time_edge
                 
         num_clus = int(np.max(cluster))+1
+        
         label = []
         c_l = 0
         for clus in [x for x in range(num_clus) if x not in exclude]:
             label.append(self.ch_labels[clus])
             if htype == 'Spike':
                 objs = [x for x in self.event if x.cluster == clus]
+               
             elif htype == 'HFO':
                 objs = [x for x in self.event if x.channel == clus]
             for ev in objs:
