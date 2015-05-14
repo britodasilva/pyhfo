@@ -56,6 +56,8 @@ class EventList(object):
                 attribute = [x.peak_freq for x in self.__getlist__('spectrum')]
             elif attr == 'power_index':
                 attribute = [x.power_index for x in self.__getlist__('spectrum')]
+            elif attr == 'peak_win_power':
+                attribute = [x.peak_win_power for x in self.__getlist__('spectrum')]
             else:
                 raise Exception('Attribute not found')
             
@@ -217,7 +219,7 @@ class EventList(object):
             c +=1
             
             
-    def rastergram(self, ax = None, spines = ['left'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True):
+    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True):
         """
         Plot rastergram 
         

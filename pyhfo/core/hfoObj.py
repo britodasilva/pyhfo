@@ -7,6 +7,7 @@ Created on Sat May  2 16:03:56 2015
 from __future__ import division
 from pyhfo.ui import plot_single_hfo
 from .HFOSpectrum import HFOSpectrum
+import numpy as np
 
 class hfoObj(object):
     def __repr__(self):
@@ -31,7 +32,7 @@ class hfoObj(object):
         self.info = info                    # info about the method of detection (cuttofs, order)
         self.duration = self.end_sec - self.start_sec  # calculate the event duration
         self.spectrum = HFOSpectrum(self,cutoff) # spectrum object
-        self.peak_amp = waveform[tstamp_idx,1] # get the peak amplitude value
+        self.peak_amp = np.max(np.abs(waveform[:,1])) # get the peak amplitude value
         
         
     def plot(self,envelope = True, figure_size = (15,10),dpi=600):        
