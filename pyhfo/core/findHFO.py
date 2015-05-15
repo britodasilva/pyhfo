@@ -30,7 +30,7 @@ def findStartEnd(filt,env,ths,min_dur,min_separation):
             return (start_ix, end_ix)
 
 def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kaiser',0.5),
-                        ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2):
+                        ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False):
     '''
     Find HFO by Filter-Hilbert method.
     
@@ -108,7 +108,10 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             if ch not in filtOBj.bad_channels:
                 print 'Finding in channel ' + filtOBj.ch_labels[ch]
                 filt = filtOBj.data[:,ch]
-                env  = np.abs(sig.hilbert(filt))
+                if energy:
+                    env  = np.abs(sig.hilbert(filt))**2
+                else:
+                    env  = np.abs(sig.hilbert(filt))
                 if ths_method == 'STD':
                     ths_value = np.mean(env) + ths*np.std(env)
                 elif ths_method == 'Tukey':
