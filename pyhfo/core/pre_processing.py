@@ -289,4 +289,20 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
     return newData        
     
+def pop_channel(Data,ch):
+    '''
+    Create a new DataObj just with the the choose channel
     
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to filt
+    ch: int
+        Channel number
+    '''
+    if len(Data.data.shape) == 1:
+         raise Exception('DataObj is single channel')
+    signal = Data.data[:,ch]
+    label = Data.ch_labels[ch]
+    newData = DataObj(signal,Data.sample_rate,Data.amp_unit,label,Data.time_vec)
+    return newData

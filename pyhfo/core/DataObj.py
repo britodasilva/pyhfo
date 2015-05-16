@@ -113,10 +113,13 @@ class DataObj(object):
                 tsp = ev.__getlist__('tstamp')
                 for idx, x in enumerate(tsp):
                     if x > s and x < e:
-                        #print (ev.event[idx].start_sec,ev.event[idx].channel+.5),ev.event[idx].duration,amp
-                        rect = patches.Rectangle((ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp),ev.event[idx].duration,amp, lw=2,alpha=0.1,facecolor=color[co]) 
+                        if ev.event[idx].htype == 'HFO':
+                            rect = patches.Rectangle((ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp),ev.event[idx].duration,amp, lw=2,alpha=0.1,facecolor=color[co]) 
+                            plt.gca().text(ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp,str(idx))
+                        elif ev.event[idx].htype == 'Spike': 
+                            rect = patches.Rectangle((ev.event[idx].tstamp,amp),0.00001,amp, lw=2,alpha=0.1,facecolor=color[co]) 
                         ax.add_patch(rect)
-                        plt.gca().text(ev.event[idx].start_sec,(ev.event[idx].channel+.5)*amp,str(idx))
+                        
                         
                     
             
