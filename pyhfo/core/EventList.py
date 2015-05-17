@@ -149,7 +149,7 @@ class EventList(object):
         def ploting(self,idx):
             clear_output()
             if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi,saveplot=saveplot)
+                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
                 
             if self.event[0].htype == 'HFO':
                 evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
