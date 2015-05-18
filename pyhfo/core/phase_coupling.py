@@ -78,3 +78,29 @@ def phase_coupling(SPK,Data,low_cut,high_cut,cluster = 'all', ch=None,order = No
                 plt.savefig(saveplot, bbox_inches='tight')
             else:
                 raise Exception('saveplot should be a string')
+
+def SPK_HFO_coupling(SPK,HFO,sample_rate,cluster = 'all',nbins = 32,color=None):
+    
+    if color ==None:
+        colours = ['#000000','#0000FF','#FF0000','#8fbc8f','yellow']
+    ks = np.array([])
+    for ev in range(len(HFO.event)):
+        
+        loc = [int((x- HFO.event[ev].start_sec)*sample_rate) for x in SPK.__getlist__('tstamp') if x > HFO.event[ev].start_sec and x < HFO.event[ev].end_sec]
+        if len(loc) > 0:
+            waveform = HFO.event[ev].waveform[HFO.event[ev].start_idx:HFO.event[ev].end_idx,1]
+            phs = np.angle(sig.hilbert(waveform))
+            k = phs[loc]
+            ks = np.append(ks,k)
+    clus = 1
+    plt.subplot(1,2,1,polar=True)
+    plt.hist(ks,bins=nbins,facecolor=colours[clus])
+    plt.yticks([])
+
+    ax = plt.subplot(1,2,2,polar=False)
+    nbin = np.concatenate((ks,ks+2*np.pi))
+    plt.hist(nbin,bins=2*nbins,facecolor=colours[clus])
+    plt.xticks(np.linspace(-np.pi,3*np.pi,9),[str(int(x)) for x in 180*np.linspace(-np.pi,3*np.pi,9)/np.pi])
+    plt.xlim([-np.pi,3*np.pi])
+    adjust_spines(ax, ['left','bottom'])
+    
