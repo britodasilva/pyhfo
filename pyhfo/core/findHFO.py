@@ -134,3 +134,96 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
                     hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
                     HFOs.__addEvent__(hfo)
     return HFOs
+
+
+
+def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 3, max_ths = 20, min_dur = 3, min_separation = 2, energy = False):
+    '''
+    Find HFO by Filter-bank method.
+    by Anderson Brito da Silva - 29/jul/2015
+    
+    
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to filt/find HFO
+    low_cut: int
+        50 (default) - Low cut frequency in Hz. 
+    high_cut: int
+        High cut frequency in Hz. If None, high_cut = nyrqst
+    ths : int, optional
+        3 (default) - threshold for z-score 
+    max_ths : int, optional
+        20 (default) - max threshold for z-score
+    min_dur: int, optional
+        3 (default) - minimal number of cicle that event should last. Calculeted 
+        the number of points that event should last by formula ceil(min_dur*sample_rate/high_cut)
+    min_separation: int, optional
+        2 (defalt) - minimal number of cicle that separete events. Calculetad 
+        the number of points that separete events by formula ceil(min_separation*sample_rate/low_cut)
+    '''
+    if low_cut == None and high_cut == None:
+        raise Exception('You should determine the cutting frequencies') 
+    sample_rate = Data.sample_rate
+    # if no high cut, =nyrqst 
+    if high_cut == None:
+        high_cut = sample_rate/2
+        
+    cutoff = [low_cut,high_cut]
+    # Transform min_dur from cicles to poinst - minimal duration of HFO (Default is 3 cicles)
+    min_dur = math.ceil(min_dur*sample_rate/high_cut)
+    # Transform min_separation from cicles to points - minimal separation between events
+    min_separation = math.ceil(min_separation*sample_rate/low_cut)
+    
+    
+    noffilters = (high_cut-low_cut)/5 + 1
+    seg_len = 400. # milisecond
+    npoints = seg_len*sample_rate/1000
+    time = np.linspace(-seg_len/2000,seg_len/2000,npoints)
+    std = .02/np.sqrt(2*np.log(2))
+    
+        
+    nch = Data.n_channels
+    for ch in range(nch):
+        if ch not in Data.bad_channels:
+            print 'Finding in channel ' + Data.ch_labels[ch] 
+            data = Data.data[:,ch]  
+            zsc = np.zeros((data.shape[0],noffilters))
+            spect = np.zeros((data.shape[0],noffilters))
+            for i,f in enumerate(range(cutoff[0],cutoff[1],5)):
+                wavelet = np.exp(2*1j*np.pi*f*time)*np.exp(-(time**2)/(2*(std**2)))
+                x = 2*abs(sig.fftconvolve(data,wavelet,'same'))
+                x = (x-np.mean(x[200:-200]))/np.std(x[200:-200])
+                spect[:,i] = x
+                x = abs(x)
+                x = np.array([0 if y < 3 or y > 10 else 1 for y in x])
+                zsc[:,i] = x
+                
+            upIX = np.unique(np.nonzero(zsc==1)[0])
+            other = np.ones(ch.shape)
+            other[upIX] = 0
+            subthsIX = other.nonzero()[0] # subthreshold index
+            subthsInterval = np.diff(subthsIX) # interval between subthreshold
+            sIX = subthsInterval > min_dur # index of subthsIX bigger then minimal duration
+            start_ix = subthsIX[sIX] + 1 # start index of events
+            end_ix = start_ix + subthsInterval[sIX]-1 # end index of events
+            to_remove = np.asarray(np.nonzero(start_ix[1:]-end_ix[0:-1] < min_separation)[0]) # find index of events separeted by less the minimal interval
+            start_ix = np.delete(start_ix, to_remove+1) # removing
+            end_ix = np.delete(end_ix, to_remove) #removing
+            for s, e in zip(start_ix, end_ix):
+                    index = np.arange(s,e)
+                    HFOwaveform = env[index]
+                    tstamp_points = s + np.argmax(HFOwaveform)
+                    tstamp = Data.time_vec[tstamp_points]
+                    Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
+                    
+                    tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
+                    waveform = np.empty((Lindex.shape[0],2))
+                    waveform[:] = np.NAN
+                    waveform[:,0] = Data.data[Lindex,ch]
+                    waveform[:,1] = filtOBj.data[Lindex,ch]
+                    start_idx = np.nonzero(Lindex==s)[0][0]
+                    end_idx = np.nonzero(Lindex==e)[0][0]
+                    hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
+                    HFOs.__addEvent__(hfo)
+    return HFOs
