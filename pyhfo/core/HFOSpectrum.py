@@ -13,9 +13,11 @@ import matplotlib.pyplot as plt
 
 class HFOSpectrum(object):
     def __init__(self,hfoObj,cutoff):
-        signal = sig.detrend(hfoObj.waveform[hfoObj.start_idx:hfoObj.end_idx,0]) # detrending
+        #signal = sig.detrend(hfoObj.waveform[hfoObj.start_idx:hfoObj.end_idx,0]) # detrending
+        signal = hfoObj.waveform[hfoObj.start_idx:hfoObj.end_idx,0]
+        #signal = hfoObj.waveform[:,0]        
         next2power = 2**(hfoObj.sample_rate-1).bit_length() # next power of two of sample rate (power of 2 which contains at least 1 seg)
-        signal = np.lib.pad(signal, int((next2power-len(signal))/2), 'constant', constant_values=0)
+        signal = np.lib.pad(signal, int((next2power-len(signal))/2), 'edge')
         self.F, self.Pxx = sig.welch(np.diff(signal), fs = hfoObj.sample_rate, nperseg = np.diff(signal).shape[-1])
         self.nPxx = self.Pxx/np.sum(self.Pxx)
         self.entropy = stat.entropy(self.nPxx)/(np.log(len(self.nPxx))/np.log(np.e))
