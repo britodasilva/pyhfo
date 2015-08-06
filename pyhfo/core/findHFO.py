@@ -257,15 +257,15 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
 
         c = Client()
         dview  = c[:]
-        print c.ids
+        print str(len(c.ids)) + ' cores'
         min_durs = dview.map_sync(find_min_duration,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
-        print 'Durations'
+        print 'Durations',
        
         min_seps = dview.map_sync(find_min_separation,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
         print '/ Separations',
         sys.stdout.flush()
         wavelets = dview.map_sync(create_wavelet,range(cutoff[0],cutoff[1],5),itertools.repeat(time,noffilters))
-        print '/ Wavelets',
+        print '/ Wavelets'
         sys.stdout.flush()
         
     nch = Data.n_channels   
@@ -281,7 +281,7 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
                 
                 sys.stdout.flush()
                 filt_waves = dview.map_sync(filt_wavelet,itertools.repeat(data_ch,noffilters),wavelets)
-                print '/ Convolved',
+                print 'Convolved',
                 sys.stdout.flush()
                 spect = np.array(filt_waves)
                 bin_xs= dview.map_sync(bin_filt,filt_waves)
@@ -290,11 +290,11 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
                 se = dview.map_sync(find_start_end,filt_waves,bin_xs,min_durs,min_seps)
                 filt_waves = None
                 bin_xs = None
-                print '/ Finded',
+                print '/ Found',
                 sys.stdout.flush()
                 z_list = dview.map_sync(se_to_array,itertools.repeat(arrlen,noffilters),se)
                 zsc = np.squeeze(z_list)
-                upIX = np.unique(np.nonzero(zsc==1)[0])
+                upIX = np.unique(np.nonzero(zsc==1)[1])
                 other = np.ones(data_ch.shape)
                 other[upIX] = 0
                 print '/ Finalizing'
@@ -308,39 +308,38 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
 
             
             for s, e in zip(start_ix, end_ix):
-                    index = np.arange(s,e)
-                    s_o = zsc[index,:]
-                    aux = spect[:,np.unique(s_o.nonzero()[1])]
-                    z = aux[index,:]
-                    HFOwaveform = np.mean(z,1)
-                    tstamp_points = s + np.argmax(HFOwaveform)
-                    tstamp = Data.time_vec[tstamp_points]
-                    s_o = None
-                    index = None
-                    HFOwaveform = None
-                    
-                    Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
-                    tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-                    waveform = np.empty((Lindex.shape[0],2))
-                    waveform[:] = np.NAN
-                    waveform[:,0] = Data.data[Lindex,ch]
-                    
-                    print Lindex.shape, zsc.shape
-                    s_o = zsc[Lindex,:]
-                    aux = spect[:,np.unique(s_o.nonzero()[1])]
-                    
-                    z = aux[Lindex,:]
-                    waveform[:,1] = np.mean(z,1)
-                    start_idx = np.nonzero(Lindex==s)[0][0]
-                    end_idx = np.nonzero(Lindex==e)[0][0]
-                    hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths,sample_rate,cutoff,info)
-                    HFOs.__addEvent__(hfo)
-                    hfo = None
-                    s_o = None
-                    Lindex = None
-                    waveform = None
-                    print HFOs
-                    sys.stdout.flush()
+                index = np.arange(s,e)
+                s_o = zsc[:,index]
+                aux = spect[np.unique(s_o.nonzero()[0]),:]
+                z = aux[:,index]
+                HFOwaveform = np.mean(z,0)
+                tstamp_points = s + np.argmax(HFOwaveform)
+                tstamp = Data.time_vec[tstamp_points]
+                s_o = None
+                index = None
+                HFOwaveform = None
+                if tstamp_points-int(sample_rate/2) < 0 or tstamp_points+int(sample_rate/2)+1 > zsc.shape[1]:
+                    continue
+                
+                Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
+                tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
+                waveform = np.empty((Lindex.shape[0],2))
+                waveform[:] = np.NAN
+                waveform[:,0] = Data.data[Lindex,ch]
+                
+
+                s_o = zsc[:,Lindex]
+                aux = spect[np.unique(s_o.nonzero()[0]),:]
+                z = aux[:,Lindex]
+                waveform[:,1] = np.mean(z,0)
+                start_idx = np.nonzero(Lindex==s)[0][0]
+                end_idx = np.nonzero(Lindex==e)[0][0]
+                hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths,sample_rate,cutoff,info)
+                HFOs.__addEvent__(hfo)
+                s_o = None
+                Lindex = None
+            print HFOs
+            sys.stdout.flush()
     return HFOs
     
     
