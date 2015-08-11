@@ -7,7 +7,7 @@ Created on Sat May  2 16:01:08 2015
 import numpy as np
 from .IndexObj import IndexObj
 from pyhfo.ui import plot_single_spk, plot_spk_cluster, adjust_spines,plot_single_hfo, plot_mean_hfo
-from pyhfo.io.o_functions import save_dataset
+#from pyhfo.io.o_functions import save_dataset
 from IPython.html import widgets # Widget definitions
 from IPython.display import display, clear_output # Used to display widgets in the notebook
 import matplotlib.pyplot as plt
@@ -277,21 +277,21 @@ class EventList(object):
         adjust_spines(ax, spines)
         
         
-    def save(self,filename = None,datasetname = None ):
-        if filename == None:
-            if hasattr(self,'filename'):
-                filename = self.filename
-                
-            else:
-                raise Exception('No file name')
-                
-        if datasetname == None:
-            if hasattr(self,'datasetname'):
-                datasetname = self.datasetname
-            else:
-                raise Exception('No dataset name')        
-     
-        save_dataset(self,filename,datasetname)
+#    def save(self,filename = None,datasetname = None ):
+#        if filename == None:
+#            if hasattr(self,'filename'):
+#                filename = self.filename
+#                
+#            else:
+#                raise Exception('No file name')
+#                
+#        if datasetname == None:
+#            if hasattr(self,'datasetname'):
+#                datasetname = self.datasetname
+#            else:
+#                raise Exception('No dataset name')        
+#     
+#        save_dataset(self,filename,datasetname)
         
         
     def HFO_clustering(self,n_clusters = 2, attr = ['entropy']):

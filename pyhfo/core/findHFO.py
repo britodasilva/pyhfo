@@ -258,10 +258,10 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
         c = Client()
         dview  = c[:]
         print str(len(c.ids)) + ' cores'
-        min_durs = dview.map_sync(find_min_duration,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
+        min_durs = map(find_min_duration,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
         print 'Durations',
        
-        min_seps = dview.map_sync(find_min_separation,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
+        min_seps = map(find_min_separation,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
         print '/ Separations',
         sys.stdout.flush()
         wavelets = dview.map_sync(create_wavelet,range(cutoff[0],cutoff[1],5),itertools.repeat(time,noffilters))
