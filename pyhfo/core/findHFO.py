@@ -9,8 +9,10 @@ from pyhfo.core import eegfilt, hfoObj, EventList
 import numpy as np
 import math
 import scipy.signal as sig
-from IPython.parallel import Client
 import itertools
+import h5py
+
+
 
 def findStartEnd(filt,env,ths,min_dur,min_separation):
             subthsIX = np.asarray(np.nonzero(env < ths)[0])# subthreshold index
@@ -139,7 +141,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
 
 
 
-def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par = False):
+def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par = False, save = None, replace = False, exclude = [],rc = None ,dview = None):
     '''
     Find HFO by Filter-bank method.
     by Anderson Brito da Silva - 29/jul/2015
@@ -160,7 +162,17 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
    
     '''
     import sys
+    import time
     
+    def clear_cache(rc,dview):
+        rc.purge_results('all')
+        rc.results.clear()
+        rc.metadata.clear()
+        dview.results.clear()
+        assert not rc.outstanding
+        rc.history = []
+        dview.history = []
+        
     def create_wavelet(f,time):
         import numpy as np
         numcycles = 13
@@ -179,36 +191,41 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
     
     def bin_filt(filt):
         import numpy as np
-        ab_x = abs((filt-np.mean(filt[200:-200]))/np.std(filt[200:-200]))
-        bin_x = np.array([1 if y < 5 or y > 10 else 0 for y in ab_x])
+        #bin_x = np.array([1 if y < 5 or y > 10 else 0 for y in abs((filt-np.mean(filt[200:-200]))/np.std(filt[200:-200]))])
+        #bin_x = np.zeros(filt.shape)
+        q75, q25 = np.percentile(np.abs(filt[200:-200]), [75 ,25])
+        iqr = q75 - q25
+        #bin_x[np.nonzero(filt.real<(q75+3*iqr))] = 1        
+        bin_x = np.array([1 if y < (q75+3*iqr) else 0 for y in np.abs(filt)])        
         return bin_x
     
     
     def find_min_duration(f,sample_rate):
         import math
         # Transform min_dur from cicles to poinst - minimal duration of HFO (Default is 3 cicles)
-        min_dur = 3
-        min_dur = math.ceil(min_dur*sample_rate/f)
+        min_dur = math.ceil(3*sample_rate/f)
         return min_dur
         
     def find_min_separation(f,sample_rate):
         import math
         # Transform min_separation from cicles to points - minimal separation between events
-        min_separation = 2 
-        min_separation = math.ceil(min_separation*sample_rate/f)
+        min_separation = math.ceil(2*sample_rate/f)
         return min_separation
         
     def find_start_end(x, bin_x,min_dur,min_separation,max_local=True):
         import numpy as np
+
         
         subthsIX = bin_x.nonzero()[0] # subthreshold index
+        
         subthsInterval = np.diff(subthsIX) # interval between subthreshold
         
         sIX = subthsInterval > min_dur # index of subthsIX bigger then minimal duration
         start_ix = subthsIX[sIX] + 1 # start index of events
         end_ix = start_ix + subthsInterval[sIX]-1 # end index of events
         
-        to_remove = np.asarray(np.nonzero(start_ix[1:]-end_ix[0:-1] < min_separation)[0]) # find index of events separeted by less the minimal interval
+       
+        to_remove = np.array(np.nonzero(start_ix[1:]-end_ix[0:-1] < min_separation)[0]) # find index of events separeted by less the minimal interval
         start_ix = np.delete(start_ix, to_remove+1) # removing
         end_ix = np.delete(end_ix, to_remove) #removing
         if max_local:
@@ -245,101 +262,171 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
         high_cut = sample_rate/2
         
     cutoff = [low_cut,high_cut] # define cutoff
-    noffilters = len(range(cutoff[0],cutoff[1],5)) # number of filters
+    scales = np.logspace(np.log(cutoff[0]),np.log(cutoff[1]), base=np.e,num = 30, endpoint=False)
+    noffilters = len(scales) # number of filters
     seg_len = 400. # milisecond
     npoints = seg_len*sample_rate/1000 # number of points of wavelet
-    time = np.linspace(-seg_len/2000,seg_len/2000,npoints) #time_vec
+    time_vec = np.linspace(-seg_len/2000,seg_len/2000,npoints) #time_vec
     
-    HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]))
+    
+    
+    if save is not None:
+        file_name = save[0]
+        obj_name = save[1]
+        save_opt = True
+        HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]),file_name = file_name, dataset_name = obj_name)
+        # open or creating file 
+        h5 = h5py.File(file_name,'a')
+        #deleting previous dataset
+        
+        if obj_name in h5:
+            if replace:
+                del h5[obj_name]
+                group = h5.create_group(obj_name)
+                group.attrs.create('htype',HFOs.htype)
+                group.attrs.create('time_edge',[HFOs.time_edge[0],HFOs.time_edge[-1]])
+                group.attrs.create('ch_labels', HFOs.ch_labels[:])
+                ev_count = 0
+                print 'Created Dataset ' + file_name + ' ' + obj_name
+            else:
+                group = h5[obj_name]
+                ev_count = len(group.items())
+                print 'Open Dataset ' + file_name + ' ' + obj_name 
+        else:
+            group = h5.create_group(obj_name)
+            group.attrs.create('htype',HFOs.htype)
+            group.attrs.create('time_edge',[HFOs.time_edge[0],HFOs.time_edge[-1]])
+            group.attrs.create('ch_labels', HFOs.ch_labels[:])
+            ev_count = 0
+            print 'Created Dataset ' + file_name + ' ' + obj_name
+            
+                
+    else:
+        save_opt = False
+        HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]))
+        
     info = str(low_cut) + '-' + str(high_cut) + ' Hz Wavelet Filter Bank'  
     if par:
         print 'Using Parallel processing',
-
-        c = Client()
-        dview  = c[:]
-        print str(len(c.ids)) + ' cores'
-        min_durs = map(find_min_duration,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
+        print str(len(rc.ids)) + ' cores'
+        min_durs = map(find_min_duration,scales,itertools.repeat(sample_rate,noffilters))
         print 'Durations',
        
-        min_seps = map(find_min_separation,range(cutoff[0],cutoff[1],5),itertools.repeat(sample_rate,noffilters))
+        min_seps = map(find_min_separation,scales,itertools.repeat(sample_rate,noffilters))
         print '/ Separations',
         sys.stdout.flush()
-        wavelets = dview.map_sync(create_wavelet,range(cutoff[0],cutoff[1],5),itertools.repeat(time,noffilters))
+        wavelets = map(create_wavelet,scales,itertools.repeat(time_vec,noffilters))
         print '/ Wavelets'
         sys.stdout.flush()
-        
+
     nch = Data.n_channels   
-    for ch in range(nch):
+    for ch in [x for x in range(nch) if not x in exclude]:
         if ch not in Data.bad_channels:
+            btime = time.time()
+            if save_opt:
+                del HFOs
+                h5.close()
+                h5 = h5py.File(file_name,'a')
+                group = h5[obj_name]
+                ev_count = len(group.items())
+                print group, ev_count
+                  
+                HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]),file_name = file_name, dataset_name = obj_name)
             print 'Finding in channel ' + Data.ch_labels[ch]
             sys.stdout.flush()
-            data_ch = Data.data[:,ch]
-            arrlen = data_ch.shape[0]
+            
+            arrlen = Data.data[:,ch].shape[0]
             zsc = np.zeros((arrlen,noffilters))
             spect = np.zeros((arrlen,noffilters), dtype='complex' )
             if par:  
                 
                 sys.stdout.flush()
-                filt_waves = dview.map_sync(filt_wavelet,itertools.repeat(data_ch,noffilters),wavelets)
+                filt_waves = dview.map_sync(filt_wavelet,itertools.repeat(Data.data[:,ch],noffilters),wavelets)
+                clear_cache(rc,dview)
                 print 'Convolved',
                 sys.stdout.flush()
                 spect = np.array(filt_waves)
                 bin_xs= dview.map_sync(bin_filt,filt_waves)
+                clear_cache(rc,dview)
                 print '/ Binarised',
                 sys.stdout.flush()
                 se = dview.map_sync(find_start_end,filt_waves,bin_xs,min_durs,min_seps)
-                filt_waves = None
-                bin_xs = None
+                clear_cache(rc,dview)
+                #print 'here'
+                #_vars = sys.modules[__name__]
+                #delattr(_vars, filt_waves)
+                #delattr(_vars, bin_xs)
                 print '/ Found',
                 sys.stdout.flush()
-                z_list = dview.map_sync(se_to_array,itertools.repeat(arrlen,noffilters),se)
-                zsc = np.squeeze(z_list)
+                zsc = np.squeeze(dview.map_sync(se_to_array,itertools.repeat(arrlen,noffilters),se))
+                clear_cache(rc,dview)
                 upIX = np.unique(np.nonzero(zsc==1)[1])
-                other = np.ones(data_ch.shape)
+                other = np.ones(Data.data[:,ch].shape)
                 other[upIX] = 0
-                print '/ Finalizing'
+                print '/ Start-End'
                 sys.stdout.flush()
                 start_ix, end_ix = find_start_end([],other,find_min_duration(cutoff[1],sample_rate),find_min_separation(cutoff[0],sample_rate),max_local=False)
                 
                 
             else:
-                wavelets = map(create_wavelet,range(cutoff[0],cutoff[1],5),itertools.repeat(time,noffilters))
+                wavelets = map(create_wavelet,scales,itertools.repeat(time_vec,noffilters))
                 
 
-            
+            print 'Creating list',
+            sys.stdout.flush()
             for s, e in zip(start_ix, end_ix):
-                index = np.arange(s,e)
-                s_o = zsc[:,index]
-                aux = spect[np.unique(s_o.nonzero()[0]),:]
-                z = aux[:,index]
-                HFOwaveform = np.mean(z,0)
-                tstamp_points = s + np.argmax(HFOwaveform)
-                tstamp = Data.time_vec[tstamp_points]
-                s_o = None
-                index = None
-                HFOwaveform = None
+
+                HFOwaveform = np.argmax(np.mean(spect[np.unique(zsc[:,np.arange(s,e)].nonzero()[0]),:][:,np.arange(s,e)],0))
+                tstamp_points = s + HFOwaveform
+                if HFOwaveform > int(sample_rate/2):
+                    continue
+                if tstamp_points+int(sample_rate/2)+1 < e:
+                    continue
                 if tstamp_points-int(sample_rate/2) < 0 or tstamp_points+int(sample_rate/2)+1 > zsc.shape[1]:
                     continue
-                
-                Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
-                tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-                waveform = np.empty((Lindex.shape[0],2))
+   
+     
+                waveform = np.empty((np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1).shape[0],2))
                 waveform[:] = np.NAN
-                waveform[:,0] = Data.data[Lindex,ch]
+                waveform[:,0] = Data.data[np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1),ch]
                 
 
-                s_o = zsc[:,Lindex]
-                aux = spect[np.unique(s_o.nonzero()[0]),:]
-                z = aux[:,Lindex]
-                waveform[:,1] = np.mean(z,0)
-                start_idx = np.nonzero(Lindex==s)[0][0]
-                end_idx = np.nonzero(Lindex==e)[0][0]
-                hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths,sample_rate,cutoff,info)
+                waveform[:,1] = np.mean(spect[np.unique(zsc[:,np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)].nonzero()[0]),:][:,np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)],0)
+                start_idx = np.nonzero(np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)==s)[0][0]
+                end_idx = np.nonzero(np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)==e)[0][0]
+                hfo = hfoObj(ch,Data.time_vec[tstamp_points],np.nonzero(np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)==tstamp_points)[0][0], waveform,start_idx,end_idx,ths,sample_rate,cutoff,info)
+                #if hfo.spectrum.peak_freq > low_cut or hfo.spectrum.peak_freq < high_cut:
                 HFOs.__addEvent__(hfo)
-                s_o = None
-                Lindex = None
+                print '.',
+                sys.stdout.flush()
+                
+            print '\n'
             print HFOs
-            sys.stdout.flush()
-    return HFOs
+            if save_opt:
+                print '... Saving ...'
+                sys.stdout.flush()
+                for idx, ev in enumerate(HFOs.event):
+                    name = ev.htype + '_' + str(idx+ev_count)
+                    dataset  = group.create_dataset(name,data=ev.waveform)
+                    dataset.attrs.create('htype', ev.htype)
+                    dataset.attrs.create('tstamp', ev.tstamp)
+                    dataset.attrs.create('channel', ev.channel)
+                    dataset.attrs.create('tstamp_idx', ev.tstamp_idx)
+                    dataset.attrs.create('start_idx', ev.start_idx)
+                    dataset.attrs.create('end_idx', ev.end_idx)
+                    dataset.attrs.create('ths_value', ev.ths_value)
+                    dataset.attrs.create('sample_rate', ev.sample_rate)
+                    dataset.attrs.create('cutoff', ev.cutoff)
+                    dataset.attrs.create('info', ev.info)
+            
+            print 'Elapsed: %s' % (time.time() - btime)
+                
+                    
+    h5.close()
+    
+               
+                   
+            
+
     
     
