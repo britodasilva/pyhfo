@@ -13,9 +13,9 @@ import matplotlib.pyplot as plt
 class HFOcoupling(object):
     def __init__(self,hfoObj):
         #signal = sig.detrend(hfoObj.waveform[hfoObj.start_idx:hfoObj.end_idx,0]) # detrending
-        signal = sig.detrend(hfoObj.waveform[hfoObj.start_idx:hfoObj.end_idx,0])
-        fs = hfoObj.sample_rate
-        signal = sig.detrend(HFO.event[501].waveform[3*fs/4:5*fs/4,0])
+        fs = hfoObj.sample_rate        
+       
+        signal = sig.detrend(hfoObj.waveform[3*fs/4:5*fs/4,0])
         PhaseFreqVector= np.arange(1,31,1)
         AmpFreqVector= np.arange(30,990,5)
         PhaseFreq_BandWidth=1
@@ -30,10 +30,10 @@ class HFOcoupling(object):
         for idx,Pf1 in enumerate(PhaseFreqVector):
             print Pf1,
             Pf2 = Pf1 + PhaseFreq_BandWidth
-            if signal.shape[0] > 18*np.fix(HFO.event[1].sample_rate/Pf1):
-                b = sig.firwin(3*np.fix(HFO.event[1].sample_rate/Pf1),[Pf1,Pf2],pass_zero=False,window=('kaiser',0.5),nyq=HFO.event[1].sample_rate/2)
+            if signal.shape[0] > 18*np.fix(fs/Pf1):
+                b = sig.firwin(3*np.fix(fs/Pf1),[Pf1,Pf2],pass_zero=False,window=('kaiser',0.5),nyq=fs/2)
             else:
-                b = sig.firwin(signal.shape[0]/6,[Pf1,Pf2],pass_zero=False,window=('kaiser',0.5),nyq=HFO.event[1].sample_rate/2)
+                b = sig.firwin(signal.shape[0]/6,[Pf1,Pf2],pass_zero=False,window=('kaiser',0.5),nyq=fs/2)
             PhaseFreq = sig.filtfilt(b,np.array([1]),signal)
             Phase=np.angle(sig.hilbert(PhaseFreq))
             PHASES[idx,:]=Phase;
@@ -41,10 +41,10 @@ class HFOcoupling(object):
         for idx1,Af1 in enumerate(AmpFreqVector):
             print Af1,
             Af2 = Af1 + AmpFreq_BandWidth
-            if signal.shape[0] > 18*np.fix(HFO.event[1].sample_rate/Af1):
-                b = sig.firwin(3*np.fix(HFO.event[1].sample_rate/Af1),[Af1,Af2],pass_zero=False,window=('kaiser',0.5),nyq=HFO.event[1].sample_rate/2)
+            if signal.shape[0] > 18*np.fix(fs/Af1):
+                b = sig.firwin(3*np.fix(fs/Af1),[Af1,Af2],pass_zero=False,window=('kaiser',0.5),nyq=fs/2)
             else:
-                b = sig.firwin(np.fix(signal.shape[0]/6),[Af1,Af2],pass_zero=False,window=('kaiser',0.5),nyq=HFO.event[1].sample_rate/2)
+                b = sig.firwin(np.fix(signal.shape[0]/6),[Af1,Af2],pass_zero=False,window=('kaiser',0.5),nyq=fs/2)
             AmpFreq = sig.filtfilt(b,np.array([1]),signal)
             Amp=np.abs(sig.hilbert(AmpFreq))
             for idx2,Pf1 in enumerate(PhaseFreqVector):
