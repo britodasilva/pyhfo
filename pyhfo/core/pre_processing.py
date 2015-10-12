@@ -8,7 +8,8 @@ Created on Fri Apr 17 13:15:57 2015
 import scipy.signal as sig
 import numpy as np
 from pyhfo.core import DataObj
-
+import matplotlib.pyplot as plt
+import itertools
 
 def decimate(Data,q):
     '''
@@ -221,7 +222,7 @@ def create_avg(Data):
     
     
     
-def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5)):
+def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5),whitening=False,filter_test=False, rc = None ,dview = None):
     '''
     Filt EEG Data object with FIR filter.
     
@@ -243,16 +244,21 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     '''
     if low_cut == None and high_cut == None:
         raise Exception('You should determine the cutting frequencies')
-       
-    signal = Data.data
+    if whitening:
+        signal = np.diff(Data.data,axis=0)
+        time_vec = Data.time_vec[:-1]
+    else:
+        signal = Data.data
+        time_vec = Data.time_vec
     sample_rate = Data.sample_rate
-    time_vec = Data.time_vec
     labels = Data.ch_labels
     if len(signal.shape) == 1:
         nch = 1
         npoints = signal.shape[0]
+       
     else:
         npoints, nch = signal.shape
+        
     # order
     if order == None:
         numtaps = int(sample_rate/10 + 1)
@@ -274,18 +280,42 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     
     # Creating filter
     b = sig.firwin(numtaps,f,pass_zero=pass_zero,window=window,nyq=nyq)
+    
+    if filter_test:
+        w,h = sig.freqz(b)
+        fig = plt.figure(figsize=(10,10))
+        plt.title('Digital filter frequency response')
+        ax1 = fig.add_subplot(111)
+        plt.plot(w, 20 * np.log10(abs(h)), 'b')
+        plt.ylabel('Amplitude [dB]', color='b')
+        plt.xlabel('Frequency [rad/sample]')
+        ax2 = ax1.twinx()
+        angles = np.unwrap(np.angle(h))
+        plt.plot(w, angles, 'g')
+        plt.ylabel('Angle (radians)', color='g')
+        plt.grid()
+        plt.axis('tight')   
+        plt.show()
+       
+        return
     # Creating filtered, numpy array with the filtered signal of raw data
     filtered = np.empty((npoints,nch))
     filtered[:] = np.NAN
     if nch == 1:
         print 'Filtering channel'
-        filtered = sig.filtfilt(b,np.array([1]),signal)
+        filtered = sig.filtfilt(b,np.array([1]),sig.detrend(signal))
     else:
-        for ch in range(nch):
-            if ch not in Data.bad_channels:
-                print 'Filtering channel ' + labels[ch]
-                filtered[:,ch] = sig.filtfilt(b,np.array([1]),signal[:,ch])
-            
+        if rc is not None:
+            nch -= len(Data.bad_channels) 
+            sig_det = sig.detrend(signal[:,[ch for ch in range(nch) if ch not in Data.bad_channels]])
+            fir = dview.map_sync(sig.filtfilt,itertools.repeat(b,nch),itertools.repeat(np.array([1]),nch),sig_det.T)
+            filtered = np.asarray(fir).T
+        else:
+            for ch in range(nch):
+                if ch not in Data.bad_channels:
+                    print 'Filtering channel ' + labels[ch]
+                    filtered[:,ch] = sig.filtfilt(b,np.array([1]),sig.detrend(signal[:,ch]))
+      
     newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
     return newData        
     

@@ -34,7 +34,8 @@ def findStartEnd(filt,env,ths,min_dur,min_separation):
             return (start_ix, end_ix)
 
 def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kaiser',0.5),
-                        ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False):
+                        ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False,
+                        whitening = True,filter_test=False,rc = None ,dview = None):
     '''
     Find HFO by Filter-Hilbert method.
     
@@ -63,6 +64,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
         2 (defalt) - minimal number of cicle that separete events. Calculetad 
         the number of points that separete events by formula ceil(min_separation*sample_rate/low_cut)
     '''
+    import sys
     if low_cut == None and high_cut == None:
         raise Exception('You should determine the cutting frequencies') 
     sample_rate = Data.sample_rate
@@ -75,22 +77,35 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
     min_dur = math.ceil(min_dur*sample_rate/high_cut)
     # Transform min_separation from cicles to points - minimal separation between events
     min_separation = math.ceil(min_separation*sample_rate/low_cut)
-    # filtering
-    filtOBj = eegfilt(Data,low_cut, high_cut,order,window)
+    if rc is not None:
+        print 'Using Parallel processing',
+        print str(len(rc.ids)) + ' cores'
+        sys.stdout.flush()
+        par = True
+    if filter_test:
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,whitening,filter_test)
+        return
+    else:
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,whitening,rc = rc, dview = dview)
     nch = filtOBj.n_channels
     if order == None:
         order = int(sample_rate/10)
-    info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) 
+    info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) + '; whiteting = ' + str(whitening)
+    print info
+    print filtOBj.data.shape   
+    sys.stdout.flush()
     HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1])) 
     if nch == 1:
         print 'Finding in channel'
         filt = filtOBj.data
+        
         env  = np.abs(sig.hilbert(filt))
         if ths_method == 'STD':
             ths_value = np.mean(env) + ths*np.std(env)
         elif ths_method == 'Tukey':
             ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
+       
         for s, e in zip(start, end):
             index = np.arange(s,e)
             HFOwaveform = env[index]
@@ -308,6 +323,7 @@ def findHFO_filtbank(Data,low_cut = 50,high_cut= None, ths = 5, max_ths = 10,par
     info = str(low_cut) + '-' + str(high_cut) + ' Hz Wavelet Filter Bank'  
     if par:
         print 'Using Parallel processing',
+        
         print str(len(rc.ids)) + ' cores'
         min_durs = map(find_min_duration,scales,itertools.repeat(sample_rate,noffilters))
         print 'Durations',
