@@ -218,7 +218,8 @@ def create_avg(Data):
         avg_label.append(Data.ch_labels[ch]+'-avg')
     
     newData = DataObj(avg,Data.sample_rate,Data.amp_unit,avg_label,Data.time_vec,Data.bad_channels)
-    return newData
+    avgData = DataObj(np.mean(Data.data[:,index],1),Data.sample_rate,Data.amp_unit,'avg',Data.time_vec,[])
+    return newData, avgData
     
     
     
