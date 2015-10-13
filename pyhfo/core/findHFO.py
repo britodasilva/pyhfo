@@ -5,7 +5,7 @@ Created on Wed May  6 18:04:03 2015
 @author: anderson
 """
 
-from pyhfo.core import eegfilt, hfoObj, EventList
+from pyhfo.core import eegfilt, hfoObj, EventList, DataObj
 import numpy as np
 import math
 import scipy.signal as sig
@@ -14,24 +14,7 @@ import h5py
 
 
 
-def findStartEnd(filt,env,ths,min_dur,min_separation):
-            subthsIX = np.asarray(np.nonzero(env < ths)[0])# subthreshold index
-            subthsInterval = np.diff(subthsIX) # interval between subthreshold
-            sIX = subthsInterval > min_dur # index of subthsIX bigger then minimal duration
-            start_ix = subthsIX[sIX] + 1 # start index of events
-            end_ix = start_ix + subthsInterval[sIX]-1 # end index of events
-            to_remove = np.asarray(np.nonzero(start_ix[1:]-end_ix[0:-1] < min_separation)[0]) # find index of events separeted by less the minimal interval
-            start_ix = np.delete(start_ix, to_remove+1) # removing
-            end_ix = np.delete(end_ix, to_remove) #removing
-            if start_ix.shape[0] != 0:
-                locs = np.diff(np.sign(np.diff(filt))).nonzero()[0] + 1 # local min+max
-                to_remove = []
-                for ii in range(start_ix.shape[0]):
-                    if np.nonzero((locs > start_ix[ii]) & (locs < end_ix[ii]))[0].shape[0] < 6:
-                        to_remove.append(ii)
-                start_ix = np.delete(start_ix, to_remove) # removing
-                end_ix = np.delete(end_ix, to_remove) #removing
-            return (start_ix, end_ix)
+
 
 def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kaiser',0.5),
                         ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False,
@@ -57,13 +40,92 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
     ths_method: str, optional
         'STD' - Standard desviation above the mean
         'Tukey' - Interquartil interval above percentile 75
+        'percentile' - above the ths percentile (example: percentile 99)
     min_dur: int, optional
         3 (default) - minimal number of cicle that event should last. Calculeted 
         the number of points that event should last by formula ceil(min_dur*sample_rate/high_cut)
     min_separation: int, optional
-        2 (defalt) - minimal number of cicle that separete events. Calculetad 
+        2 (default) - minimal number of cicle that separete events. Calculetad 
         the number of points that separete events by formula ceil(min_separation*sample_rate/low_cut)
+    energy: boolean
+        False (default) - Caulculate the envelepe amplitude
+        True - calculate the energy by hilbert square
+    whitening: boolean
+        True (default) - White the signal by differential operator before filtering
+        False - do not perform the whitening
+    filter_test: boolean
+        False (default) - nothing
+        True - plot the filter response (no HFO is find)
+    rc: Ipython parallel Clients
+    dview: Ipython parallel direct view
     '''
+    
+    def calc_ths(filt,ths,ths_method,energy):
+        if energy:
+            env  = np.abs(sig.hilbert(filt))**2
+        else:
+            env  = np.abs(sig.hilbert(filt))
+            
+        if ths_method == 'STD':
+            ths_value = np.mean(env) + ths*np.std(env)
+        elif ths_method == 'Tukey':
+            ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
+        elif ths_method == 'percentile':
+            ths_value = np.percentile(env,ths)
+            
+        return env,ths_value
+    
+    def findStartEnd(filt,env,ths,min_dur,min_separation):
+        subthsIX = np.asarray(np.nonzero(env < ths)[0])# subthreshold index
+        subthsInterval = np.diff(subthsIX) # interval between subthreshold
+        sIX = subthsInterval > min_dur # index of subthsIX bigger then minimal duration
+        start_ix = subthsIX[sIX] + 1 # start index of events
+        end_ix = start_ix + subthsInterval[sIX]-1 # end index of events
+        to_remove = np.asarray(np.nonzero(start_ix[1:]-end_ix[0:-1] < min_separation)[0]) # find index of events separeted by less the minimal interval
+        start_ix = np.delete(start_ix, to_remove+1) # removing
+        end_ix = np.delete(end_ix, to_remove) #removing
+        if start_ix.shape[0] != 0:
+            locs = np.diff(np.sign(np.diff(filt))).nonzero()[0] + 1 # local min+max
+            to_remove = []
+            for ii in range(start_ix.shape[0]):
+                if np.nonzero((locs > start_ix[ii]) & (locs < end_ix[ii]))[0].shape[0] < 6:
+                    to_remove.append(ii)
+            start_ix = np.delete(start_ix, to_remove) # removing
+            end_ix = np.delete(end_ix, to_remove) #removing
+        return (start_ix, end_ix)
+ 
+    def adding_list(start,end,env,Data,filtOBj,ch,ListObj,cutoff,info,exclusion):
+        for s, e in zip(start, end):
+            if exclusion is not None:
+                ex_s = exclusion.__getlist__('start_sec')*Data.sample_rate
+                ex_e = exclusion.__getlist__('end_sec')*Data.sample_rate
+                aux = np.array([])
+                for es, ee in zip(ex_s, ex_e):
+                    aux = np.append(aux,np.arange(es,ee))
+                if s in aux or e in aux:
+                    print 'skiped'
+                    continue
+            index = np.arange(s,e)
+            HFOwaveform = env[index]
+            tstamp_points = s + np.argmax(HFOwaveform)
+            tstamp = Data.time_vec[tstamp_points]
+            Lindex = np.arange(tstamp_points-int(Data.sample_rate/2),tstamp_points+int(Data.sample_rate/2)+1)
+            
+            tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
+            waveform = np.empty((Lindex.shape[0],2))
+            waveform[:] = np.NAN
+            if ch == 'common':
+                waveform[:,0] = Data.common_ref[Lindex]
+                waveform[:,1] = filtOBj.common_ref[Lindex]
+            else:
+                waveform[:,0] = Data.data[Lindex,ch]
+                waveform[:,1] = filtOBj.data[Lindex,ch]
+            start_idx = np.nonzero(Lindex==s)[0][0]
+            end_idx = np.nonzero(Lindex==e)[0][0]
+            hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
+            ListObj.__addEvent__(hfo)
+        
+
     import sys
     if low_cut == None and high_cut == None:
         raise Exception('You should determine the cutting frequencies') 
@@ -81,77 +143,63 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
         print 'Using Parallel processing',
         print str(len(rc.ids)) + ' cores'
         sys.stdout.flush()
-        par = True
     if filter_test:
-        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,whitening,filter_test)
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,filter_test)
         return
-    else:
-        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,whitening,rc = rc, dview = dview)
-    nch = filtOBj.n_channels
+
     if order == None:
         order = int(sample_rate/10)
     info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) + '; whiteting = ' + str(whitening)
     print info
-    print filtOBj.data.shape   
-    sys.stdout.flush()
+    if whitening:
+        signal = np.diff(Data.data,axis=0)
+        signal= np.vstack((signal,signal[-1,:]))
+        time_vec = Data.time_vec
+        amp = Data.amp_unit
+        labels = Data.ch_labels
+        bad_channels = Data.bad_channels
+        if Data.common_ref is not None:
+            common = np.diff(Data.common_ref)
+            common= np.append(common,common[-1])
+            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels,common_ref = common)
+        else:
+            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels)
+
+    if Data.common_ref is not None:
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,rc = rc, dview = dview, common_filt = True)
+        Fake = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]))         
+        filt = filtOBj.common_ref
+        env,ths_value = calc_ths(filt,ths,ths_method,energy)
+        start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
+        
+        adding_list(start,end,env,Data,filtOBj,'common',Fake,cutoff,info,None)
+        print 'Fake detected'
+    else:
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,rc = rc, dview = dview)
+    nch = filtOBj.n_channels
     HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1])) 
+   
     if nch == 1:
         print 'Finding in channel'
         filt = filtOBj.data
-        
-        env  = np.abs(sig.hilbert(filt))
-        if ths_method == 'STD':
-            ths_value = np.mean(env) + ths*np.std(env)
-        elif ths_method == 'Tukey':
-            ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
+        env,ths_value = calc_ths(filt,ths,ths_method,energy)
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
-       
-        for s, e in zip(start, end):
-            index = np.arange(s,e)
-            HFOwaveform = env[index]
-            tstamp_points = s + np.argmax(HFOwaveform)
-            tstamp = Data.time_vec[tstamp_points]
-            Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
+        if Data.common_ref is not None:
+            adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,exclusion = Fake)
+        else:
+            adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,None)
             
-            tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-            waveform = np.empty((Lindex.shape[0],2))
-            waveform[:] = np.NAN
-            waveform[:,0] = Data.data[Lindex]
-            waveform[:,1] = filtOBj.data[Lindex]
-            start_idx = np.nonzero(Lindex==s)[0][0]
-            end_idx = np.nonzero(Lindex==e)[0][0]
-            hfo = hfoObj(0,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
-            HFOs.__addEvent__(hfo)
     else:
         for ch in range(nch):
             if ch not in filtOBj.bad_channels:
                 print 'Finding in channel ' + filtOBj.ch_labels[ch]
                 filt = filtOBj.data[:,ch]
-                if energy:
-                    env  = np.abs(sig.hilbert(filt))**2
-                else:
-                    env  = np.abs(sig.hilbert(filt))
-                if ths_method == 'STD':
-                    ths_value = np.mean(env) + ths*np.std(env)
-                elif ths_method == 'Tukey':
-                    ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
+                env,ths_value = calc_ths(filt,ths,ths_method,energy)
                 start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
-                for s, e in zip(start, end):
-                    index = np.arange(s,e)
-                    HFOwaveform = env[index]
-                    tstamp_points = s + np.argmax(HFOwaveform)
-                    tstamp = Data.time_vec[tstamp_points]
-                    Lindex = np.arange(tstamp_points-int(sample_rate/2),tstamp_points+int(sample_rate/2)+1)
-                    
-                    tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-                    waveform = np.empty((Lindex.shape[0],2))
-                    waveform[:] = np.NAN
-                    waveform[:,0] = Data.data[Lindex,ch]
-                    waveform[:,1] = filtOBj.data[Lindex,ch]
-                    start_idx = np.nonzero(Lindex==s)[0][0]
-                    end_idx = np.nonzero(Lindex==e)[0][0]
-                    hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info)
-                    HFOs.__addEvent__(hfo)
+                if Data.common_ref is not None:
+                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,exclusion = Fake)
+                else:
+                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None)
     return HFOs
 
 

@@ -35,9 +35,15 @@ class DataObj(object):
     bad_channels: list of int, optional
         None (default) - No bad channels
         List - create a list of bad channels. 
+    file_name: str
+        File name to save
+    dataste_name: str
+        Dataset name to save
+    common_ref: numpy array
+        Array with shape=(points,) with the common reference used in the data
     '''
     htype = 'Data'
-    def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None,file_name=None,dataset_name = None):
+    def __init__(self,data,sample_rate,amp_unit,ch_labels=None,time_vec=None,bad_channels=None,file_name=None,dataset_name = None, common_ref = None):
         if len(data.shape) == 1:
             self.n_channels = 1
             self.npoints = data.shape[0]
@@ -67,6 +73,10 @@ class DataObj(object):
             self.filename = file_name
         if dataset_name != None:
             self.datasetname = dataset_name
+        if common_ref != None:
+            if common_ref.shape[0] != self.npoints:
+                raise Exception('common_ref should be numpy array with the same number of points of data')
+            self.common_ref = common_ref
    
     def plot(self,start_sec = 0, window_size = 10, amp = 100, figure_size = (15,8),
              dpi=600,events = None, **kwargs):

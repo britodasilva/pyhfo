@@ -41,6 +41,11 @@ class EventList(object):
         self.__removeEvent__(to_remove)
     def __repr__(self):
         return '%s events' % len(self.event)
+    def length(self):
+        return len(self.event)
+    def __getitem__(self,index):
+        result = self.event[index]
+        return result
     def __getlist__(self,attr):
         '''
         return a list of atrribute
@@ -154,7 +159,7 @@ class EventList(object):
             if self.event[0].htype == 'HFO':
                 evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
                 plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi,saveplot=saveplot)
-            plt.suptitle('Cluster ' + str(idx))
+            plt.suptitle('Cluster ' + str(idx) +' (' +str(len(evlist)) +')')
             
         def f_button(clicked):
             idx = event.add(1)
@@ -219,7 +224,7 @@ class EventList(object):
             c +=1
             
             
-    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True):
+    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True,common=False):
         """
         Plot rastergram 
         
@@ -257,20 +262,32 @@ class EventList(object):
         
         label = []
         c_l = 0
-        for clus in [x for x in range(num_clus) if x not in exclude]:
-            label.append(self.ch_labels[clus])
-            if htype == 'Spike':
-                objs = [x for x in self.event if x.cluster == clus]
-               
-            elif htype == 'HFO':
-                objs = [x for x in self.event if x.channel == clus]
+        if common:
+            label.append('Common_ref')
+            objs = [x for x in self.event if x.channel == 'common']
             for ev in objs:
                 rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
                 ax.add_patch(rect)
-                
             if line:
                 plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
             c_l += 1
+        else:
+            for clus in [x for x in range(num_clus) if x not in exclude]:
+                label.append(self.ch_labels[clus])
+                if htype == 'Spike':
+                    objs = [x for x in self.event if x.cluster == clus]
+                   
+                elif htype == 'HFO':
+                    objs = [x for x in self.event if x.channel == clus]
+                for ev in objs:
+                    rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
+                    ax.add_patch(rect)
+                    
+                if line:
+                    plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
+                c_l += 1
+        
+            
         ax.set_ylim(0,c_l)
         ax.set_xlim(time_edge[0],time_edge[-1])
         plt.yticks(np.arange(c_l)+0.5,label, size=16)

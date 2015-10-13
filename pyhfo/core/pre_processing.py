@@ -217,13 +217,12 @@ def create_avg(Data):
     for ch in range(Data.n_channels):
         avg_label.append(Data.ch_labels[ch]+'-avg')
     
-    newData = DataObj(avg,Data.sample_rate,Data.amp_unit,avg_label,Data.time_vec,Data.bad_channels)
-    avgData = DataObj(np.mean(Data.data[:,index],1),Data.sample_rate,Data.amp_unit,'avg',Data.time_vec,[])
-    return newData, avgData
+    newData = DataObj(avg,Data.sample_rate,Data.amp_unit,avg_label,Data.time_vec,Data.bad_channels,common_ref = np.mean(Data.data[:,index],1))
+    return newData
     
     
     
-def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5),whitening=False,filter_test=False, rc = None ,dview = None):
+def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5),filter_test=False, rc = None ,dview = None,common_filt = False):
     '''
     Filt EEG Data object with FIR filter.
     
@@ -242,20 +241,29 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     window : string or tuple of string and parameter values
         Desired window to use. See `scipy.signal.get_window` for a list
         of windows and required parameters.
+    filter_test: boolean
+        False (default) - nothing
+        True - plot the filter response (no HFO is find)
+    rc: Ipython parallel Clients
+    dview: Ipython parallel direct view 
+    common_filt: boolean
+        False (default) - nothing
+        True - filt with the same parameter the common reference
+    
     '''
     if low_cut == None and high_cut == None:
         raise Exception('You should determine the cutting frequencies')
-    if whitening:
-        signal = np.diff(Data.data,axis=0)
-        time_vec = Data.time_vec[:-1]
-    else:
-        signal = Data.data
-        time_vec = Data.time_vec
+    
+    signal = Data.data
+    time_vec = Data.time_vec
+    if common_filt:
+        common = Data.common_ref
     sample_rate = Data.sample_rate
     labels = Data.ch_labels
     if len(signal.shape) == 1:
         nch = 1
         npoints = signal.shape[0]
+        print npoints
        
     else:
         npoints, nch = signal.shape
@@ -307,17 +315,23 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
         filtered = sig.filtfilt(b,np.array([1]),sig.detrend(signal))
     else:
         if rc is not None:
+            
             nch -= len(Data.bad_channels) 
             sig_det = sig.detrend(signal[:,[ch for ch in range(nch) if ch not in Data.bad_channels]])
             fir = dview.map_sync(sig.filtfilt,itertools.repeat(b,nch),itertools.repeat(np.array([1]),nch),sig_det.T)
             filtered = np.asarray(fir).T
+            print 'Filtered'
         else:
             for ch in range(nch):
                 if ch not in Data.bad_channels:
                     print 'Filtering channel ' + labels[ch]
                     filtered[:,ch] = sig.filtfilt(b,np.array([1]),sig.detrend(signal[:,ch]))
-      
-    newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
+    if common_filt:
+        print 'Filtering Common'
+        common = sig.filtfilt(b,np.array([1]),sig.detrend(common))
+        newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels,common_ref = common)
+    else:
+        newData = DataObj(filtered,sample_rate,Data.amp_unit,labels,time_vec,Data.bad_channels)
     return newData        
     
 def pop_channel(Data,ch):
