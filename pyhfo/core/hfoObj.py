@@ -8,6 +8,9 @@ from __future__ import division
 from pyhfo.ui import plot_single_hfo
 from .HFOSpectrum import HFOSpectrum
 import numpy as np
+from book_reader import BookImporter
+import matplotlib.pyplot as plt
+import os
 
 class hfoObj(object):
     def __repr__(self):
@@ -42,6 +45,81 @@ class hfoObj(object):
     def __set_cluster__(self,cluster):
         self.cluster = cluster
         
-
+    def MP(self):
+        def creating_set_file(N,sr):
+            f = open( 'MP_temp.set', 'w' )
+            f.write('# OBLIGATORY PARAMETERS\n')
+            f.write('nameOfDataFile          ' + name + '\n' )
+            f.write('nameOfOutputDirectory   ' + './\n' )
+            f.write('writingMode             ' + 'CREATE\n' )
+            f.write('samplingFrequency       ' + repr(sr) + '\n' )
+            f.write('numberOfChannels        ' + '1\n' )
+            f.write('selectedChannels        ' + '1\n' )
+            f.write('numberOfSamplesInEpoch  ' + repr(N) + '\n' )
+            f.write('selectedEpochs          ' + '1\n' )
+            f.write('typeOfDictionary        ' + 'OCTAVE_FIXED\n' )
+            f.write('energyError             ' + '0.01 100.0\n' )
+            f.write('randomSeed              ' + 'auto\n' )
+            f.write('reinitDictionary        ' + 'NO_REINIT_AT_ALL\n' )
+            f.write('maximalNumberOfIterations ' + '20\n' )
+            f.write('energyPercent           ' + '99.\n' )
+            f.write('MP                      ' + 'SMP\n' )
+            f.write('scaleToPeriodFactor     ' + '1.0\n' )
+            f.write('pointsPerMicrovolt      ' + '1000.\n' )
+            f.write('# ADDITIONAL PARAMETERS\n' )
+            f.write('normType                ' + 'L2\n' )
+            f.write('diracInDictionary       ' + 'YES\n' )
+            f.write('gaussInDictionary       ' + 'YES\n' )
+            f.write('sinCosInDictionary      ' + 'YES\n' )
+            f.write('gaborInDictionary       ' + 'YES\n' )
+            f.write('progressBar             ' + 'OFF\n' )
+            f.close()
+        
+        signal =  self.waveform[self.start_idx-100:self.end_idx+100,0]*1000000
+        f_name = 'MP_temp'
+        if os.path.isfile('MP_temp_smp.b'):
+            os.system('rm MP_temp_smp.b')
+        a = np.array(signal,'float32')
+        name = f_name+'.dat'
+        f = open(name,'wb')
+        a.tofile(f)
+        f.close()
+        print signal.shape[0]
+        creating_set_file(signal.shape[0],float(self.sample_rate))
+        
+        os.system('mp5 -f MP_temp.set')
+        
+        book = BookImporter(f_name+'_smp.b')
+        t      = np.linspace(0,len(signal)-1,len(signal))/2000
+        Eatoms = 0
+        reconstruction = np.zeros(len(t))
+        #count = 0
+        for i,booknumber in enumerate(book.atoms):
+            
+            for atom in book.atoms[booknumber]:
+                if atom['type'] !=13:
+                    continue
+                frequency = atom['params']['f']*book.fs/2
+                amplitude = atom['params']['amplitude']
+                phase 	  = atom['params']['phase']
+                position  = atom['params']['t']/book.fs
+                width     = atom['params']['scale']/book.fs
+                
+                if frequency > 60 and frequency < 600 and width <0.05:
+                    print frequency,width
+                    reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
+                Eatoms += atom['params']['modulus'] 
+        plt.subplot(311)
+        plt.plot(t,signal); 
+        plt.title('simulated signal from demo.dat')
+        plt.subplot(312)
+        plt.plot(t,book.signals[1][0]); 
+        plt.title('signal stored in demo\_smp.b')
+        # this is signal read from the *.b file, should be the same as the original
+        plt.subplot(313)
+        plt.plot(t,reconstruction,'r');
+        plt.title('signal reconstructed from MP decomposition')
+        plt.show()
+        return book
 
    

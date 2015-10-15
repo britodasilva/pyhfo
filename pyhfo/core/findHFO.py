@@ -124,6 +124,9 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             end_idx = np.nonzero(Lindex==e)[0][0]
             hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
             ListObj.__addEvent__(hfo)
+            
+            
+          
         
 
     import sys
