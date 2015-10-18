@@ -96,16 +96,20 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
  
     def adding_list(start,end,env,Data,filtOBj,ch,ListObj,cutoff,info,exclusion):
         for s, e in zip(start, end):
+            index = np.arange(s,e)
             if exclusion is not None:
                 ex_s = exclusion.__getlist__('start_sec')*Data.sample_rate
                 ex_e = exclusion.__getlist__('end_sec')*Data.sample_rate
                 aux = np.array([])
                 for es, ee in zip(ex_s, ex_e):
-                    aux = np.append(aux,np.arange(es,ee))
-                if s in aux or e in aux:
+                    
+                    aux = np.append(aux,np.arange(int(es),int(ee)))
+                
+                aux2 = list(set(aux).intersection(index))
+                
+                if len(aux2) > 0:
                     print 'skiped'
                     continue
-            index = np.arange(s,e)
             HFOwaveform = env[index]
             tstamp_points = s + np.argmax(HFOwaveform)
             tstamp = Data.time_vec[tstamp_points]
@@ -203,6 +207,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
                     adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,exclusion = Fake)
                 else:
                     adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None)
+   
     return HFOs
 
 

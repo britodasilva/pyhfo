@@ -76,7 +76,7 @@ class DataObj(object):
         if common_ref != None:
             if common_ref.shape[0] != self.npoints:
                 raise Exception('common_ref should be numpy array with the same number of points of data')
-            self.common_ref = common_ref
+        self.common_ref = common_ref
    
     def plot(self,start_sec = 0, window_size = 10, amp = 100, figure_size = (15,8),
              dpi=600,events = None, **kwargs):

@@ -61,7 +61,7 @@ class hfoObj(object):
             f.write('energyError             ' + '0.01 100.0\n' )
             f.write('randomSeed              ' + 'auto\n' )
             f.write('reinitDictionary        ' + 'NO_REINIT_AT_ALL\n' )
-            f.write('maximalNumberOfIterations ' + '20\n' )
+            f.write('maximalNumberOfIterations ' + '10\n' )
             f.write('energyPercent           ' + '99.\n' )
             f.write('MP                      ' + 'SMP\n' )
             f.write('scaleToPeriodFactor     ' + '1.0\n' )
@@ -75,7 +75,7 @@ class hfoObj(object):
             f.write('progressBar             ' + 'OFF\n' )
             f.close()
         
-        signal =  self.waveform[self.start_idx-100:self.end_idx+100,0]*1000000
+        signal =  self.waveform[self.tstamp_idx-(self.sample_rate/4):self.tstamp_idx+(self.sample_rate/4),0]
         f_name = 'MP_temp'
         if os.path.isfile('MP_temp_smp.b'):
             os.system('rm MP_temp_smp.b')
@@ -84,16 +84,16 @@ class hfoObj(object):
         f = open(name,'wb')
         a.tofile(f)
         f.close()
-        print signal.shape[0]
         creating_set_file(signal.shape[0],float(self.sample_rate))
         
         os.system('mp5 -f MP_temp.set')
         
         book = BookImporter(f_name+'_smp.b')
-        t      = np.linspace(0,len(signal)-1,len(signal))/2000
+        t      = np.linspace(0,len(signal)-1,len(signal))/book.fs
         Eatoms = 0
         reconstruction = np.zeros(len(t))
         #count = 0
+        print self.ths_value
         for i,booknumber in enumerate(book.atoms):
             
             for atom in book.atoms[booknumber]:
@@ -104,9 +104,10 @@ class hfoObj(object):
                 phase 	  = atom['params']['phase']
                 position  = atom['params']['t']/book.fs
                 width     = atom['params']['scale']/book.fs
+                #print frequency,width,position
                 
-                if frequency > 60 and frequency < 600 and width <0.05:
-                    print frequency,width
+                if frequency > 60 and frequency < 600 and position > self.start_idx/self.sample_rate and position < self.end_idx/self.sample_rate and width < .3:
+                    print amplitude
                     reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
                 Eatoms += atom['params']['modulus'] 
         plt.subplot(311)
