@@ -61,7 +61,7 @@ class hfoObj(object):
             f.write('energyError             ' + '0.01 100.0\n' )
             f.write('randomSeed              ' + 'auto\n' )
             f.write('reinitDictionary        ' + 'NO_REINIT_AT_ALL\n' )
-            f.write('maximalNumberOfIterations ' + '10\n' )
+            f.write('maximalNumberOfIterations ' + '5\n' )
             f.write('energyPercent           ' + '99.\n' )
             f.write('MP                      ' + 'SMP\n' )
             f.write('scaleToPeriodFactor     ' + '1.0\n' )
@@ -75,7 +75,7 @@ class hfoObj(object):
             f.write('progressBar             ' + 'OFF\n' )
             f.close()
         
-        signal =  self.waveform[self.tstamp_idx-(self.sample_rate/4):self.tstamp_idx+(self.sample_rate/4),0]
+        signal =  self.waveform[self.tstamp_idx-int(self.sample_rate/4):self.tstamp_idx+int(self.sample_rate/4),0]
         f_name = 'MP_temp'
         if os.path.isfile('MP_temp_smp.b'):
             os.system('rm MP_temp_smp.b')
@@ -93,7 +93,7 @@ class hfoObj(object):
         Eatoms = 0
         reconstruction = np.zeros(len(t))
         #count = 0
-        print self.ths_value
+        #print np.mean(signal) + 3*np.std(signal),np.mean(signal) + 5*np.std(signal)
         for i,booknumber in enumerate(book.atoms):
             
             for atom in book.atoms[booknumber]:
@@ -106,9 +106,11 @@ class hfoObj(object):
                 width     = atom['params']['scale']/book.fs
                 #print frequency,width,position
                 
-                if frequency > 60 and frequency < 600 and position > self.start_idx/self.sample_rate and position < self.end_idx/self.sample_rate and width < .3:
-                    print amplitude
-                    reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
+                if frequency > 60 and frequency < 600:
+                    if position > self.start_idx/(2*self.sample_rate) and position < self.end_idx/(2*self.sample_rate):
+                        #if amplitude > np.mean(signal) + 3*np.std(signal):
+                        print 2*np.pi*width*frequency                        
+                        reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
                 Eatoms += atom['params']['modulus'] 
         plt.subplot(311)
         plt.plot(t,signal); 

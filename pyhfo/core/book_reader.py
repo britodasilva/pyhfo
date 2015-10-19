@@ -58,6 +58,7 @@ class BookImporter(object):
 			date_s = np.fromfile(f, '>u1', count=1)[0]
 			return np.dtype([('date', 'S'+str(date_s))])			
 		elif ident == 5: ## signal info
+			print 'here'
 			sig_info_s = np.fromfile(f, '>u1', count=1)[0]
 			return np.dtype([('Fs', '>f4'), ('ptspmV', '>f4'),
 							('chnl_cnt', '>u2')])							
@@ -130,8 +131,13 @@ class BookImporter(object):
 				pl = f.tell()
 				atom, a_chnl_nr = self._get_atoms(f)
 				atoms[epoch_nr] = atom
-			ident = np.fromfile(f, '>u1', count=1)
-			if ident:
-				ident = ident[0]
-			ct = self._get_type(ident, f)
+			
+			try:
+				ident = np.fromfile(f, '>u1', count=1)
+				if ident:
+					ident = ident[0]
+				ct = self._get_type(ident, f)
+			except Exception:
+				pass
+
 		return data, signals, atoms, epoch_s
