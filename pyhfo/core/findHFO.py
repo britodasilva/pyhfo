@@ -130,12 +130,15 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             start_idx = np.nonzero(Lindex==s)[0][0]
             end_idx = np.nonzero(Lindex==e)[0][0]
             hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
-            test = MP(hfo)
-            if test:
+            if ch == 'common':
                 ListObj.__addEvent__(hfo)
             else:
-                if excluded is not None:
-                    excluded.__addEvent__(hfo)
+                test = MP(hfo)
+                if test:
+                    ListObj.__addEvent__(hfo)
+                else:
+                    if excluded is not None:
+                        excluded.__addEvent__(hfo)
                 
             
             
@@ -284,6 +287,8 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
                     adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,Fake,excl)
                 else:
                     adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None,excl)
+            print HFOs,excl
+            sys.stdout.flush()
    
     return HFOs,excl
 
