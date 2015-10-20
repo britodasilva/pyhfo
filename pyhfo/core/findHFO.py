@@ -11,7 +11,8 @@ import math
 import scipy.signal as sig
 import itertools
 import h5py
-
+import os
+from book_reader import BookImporter
 
 
 
@@ -94,8 +95,10 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             end_ix = np.delete(end_ix, to_remove) #removing
         return (start_ix, end_ix)
  
-    def adding_list(start,end,env,Data,filtOBj,ch,ListObj,cutoff,info,exclusion):
+    def adding_list(start,end,env,Data,filtOBj,ch,ListObj,cutoff,info,exclusion,excluded):
         for s, e in zip(start, end):
+            print '.',
+            sys.stdout.flush()
             index = np.arange(s,e)
             if exclusion is not None:
                 ex_s = exclusion.__getlist__('start_sec')*Data.sample_rate
@@ -127,11 +130,86 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             start_idx = np.nonzero(Lindex==s)[0][0]
             end_idx = np.nonzero(Lindex==e)[0][0]
             hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
-            ListObj.__addEvent__(hfo)
+            test = MP(hfo)
+            if test:
+                ListObj.__addEvent__(hfo)
+            else:
+                if excluded is not None:
+                    excluded.__addEvent__(hfo)
+                
             
             
-          
+    def MP(candidate):
+        def creating_set_file(N,sr):
+            f = open( 'MP_temp.set', 'w' )
+            f.write('# OBLIGATORY PARAMETERS\n')
+            f.write('nameOfDataFile          ' + name + '\n' )
+            f.write('nameOfOutputDirectory   ' + './\n' )
+            f.write('writingMode             ' + 'CREATE\n' )
+            f.write('samplingFrequency       ' + repr(sr) + '\n' )
+            f.write('numberOfChannels        ' + '1\n' )
+            f.write('selectedChannels        ' + '1\n' )
+            f.write('numberOfSamplesInEpoch  ' + repr(N) + '\n' )
+            f.write('selectedEpochs          ' + '1\n' )
+            f.write('typeOfDictionary        ' + 'OCTAVE_FIXED\n' )
+            f.write('energyError             ' + '0.01 100.0\n' )
+            f.write('randomSeed              ' + 'auto\n' )
+            f.write('reinitDictionary        ' + 'NO_REINIT_AT_ALL\n' )
+            f.write('maximalNumberOfIterations ' + '5\n' )
+            f.write('energyPercent           ' + '99.\n' )
+            f.write('MP                      ' + 'SMP\n' )
+            f.write('scaleToPeriodFactor     ' + '1.0\n' )
+            f.write('pointsPerMicrovolt      ' + '1000.\n' )
+            f.write('# ADDITIONAL PARAMETERS\n' )
+            f.write('normType                ' + 'L2\n' )
+            f.write('diracInDictionary       ' + 'YES\n' )
+            f.write('gaussInDictionary       ' + 'YES\n' )
+            f.write('sinCosInDictionary      ' + 'YES\n' )
+            f.write('gaborInDictionary       ' + 'YES\n' )
+            f.write('progressBar             ' + 'OFF\n' )
+            f.close()
         
+        signal =  candidate.waveform[candidate.tstamp_idx-int(candidate.sample_rate/4):candidate.tstamp_idx+int(candidate.sample_rate/4),0]
+        f_name = 'MP_temp'
+        if os.path.isfile('MP_temp_smp.b'):
+            os.system('rm MP_temp_smp.b')
+        a = np.array(signal,'float32')
+        name = f_name+'.dat'
+        f = open(name,'wb')
+        a.tofile(f)
+        f.close()
+        creating_set_file(signal.shape[0],float(candidate.sample_rate))
+        
+        os.system('mp5 -f MP_temp.set')
+        
+        book = BookImporter(f_name+'_smp.b')
+        #t      = np.linspace(0,len(signal)-1,len(signal))/book.fs
+        #Eatoms = 0
+        #reconstruction = np.zeros(len(t))
+        HFO = False        
+        #count = 0
+        #print np.mean(signal) + 3*np.std(signal),np.mean(signal) + 5*np.std(signal)
+        for i,booknumber in enumerate(book.atoms):
+            
+            for atom in book.atoms[booknumber]:
+                if atom['type'] !=13:
+                    continue
+                frequency = atom['params']['f']*book.fs/2
+               # amplitude = atom['params']['amplitude']
+               # phase 	  = atom['params']['phase']
+                position  = atom['params']['t']/book.fs
+               # width     = atom['params']['scale']/book.fs
+                #print frequency,width,position
+                
+                if frequency > 60 and frequency < 600:
+                    if position > candidate.start_idx/(2*candidate.sample_rate) and position < candidate.end_idx/(2*candidate.sample_rate):
+                        #if amplitude > np.mean(signal) + 3*np.std(signal):
+                        if frequency/(2*np.pi*atom['params']['scale']) < 1:                    
+                            #reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
+                            HFO = True
+                            break
+                #Eatoms += atom['params']['modulus']           
+        return HFO #,reconstruction
 
     import sys
     if low_cut == None and high_cut == None:
@@ -179,36 +257,35 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
         env,ths_value = calc_ths(filt,ths,ths_method,energy)
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
         
-        adding_list(start,end,env,Data,filtOBj,'common',Fake,cutoff,info,None)
+        adding_list(start,end,env,Data,filtOBj,'common',Fake,cutoff,info,None,None)
         print 'Fake detected'
     else:
         filtOBj = eegfilt(Data,low_cut, high_cut,order,window,rc = rc, dview = dview)
     nch = filtOBj.n_channels
     HFOs = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1])) 
-   
+    excl = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]))
     if nch == 1:
         print 'Finding in channel'
+        sys.stdout.flush()
         filt = filtOBj.data
         env,ths_value = calc_ths(filt,ths,ths_method,energy)
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
-        if Data.common_ref is not None:
-            adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,exclusion = Fake)
-        else:
-            adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,None)
+        adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,None,excl)
             
     else:
         for ch in range(nch):
             if ch not in filtOBj.bad_channels:
                 print 'Finding in channel ' + filtOBj.ch_labels[ch]
+                sys.stdout.flush()
                 filt = filtOBj.data[:,ch]
                 env,ths_value = calc_ths(filt,ths,ths_method,energy)
                 start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
                 if Data.common_ref is not None:
-                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,exclusion = Fake)
+                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,Fake,excl)
                 else:
-                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None)
+                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None,excl)
    
-    return HFOs
+    return HFOs,excl
 
 
 

@@ -109,18 +109,20 @@ class hfoObj(object):
                 if frequency > 60 and frequency < 600:
                     if position > self.start_idx/(2*self.sample_rate) and position < self.end_idx/(2*self.sample_rate):
                         #if amplitude > np.mean(signal) + 3*np.std(signal):
-                        print 2*np.pi*width*frequency                        
-                        reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
+                        if frequency/(2*np.pi*atom['params']['scale']) < 1:                    
+                            reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
                 Eatoms += atom['params']['modulus'] 
-        plt.subplot(311)
-        plt.plot(t,signal); 
-        plt.title('simulated signal from demo.dat')
-        plt.subplot(312)
-        plt.plot(t,book.signals[1][0]); 
-        plt.title('signal stored in demo\_smp.b')
-        # this is signal read from the *.b file, should be the same as the original
-        plt.subplot(313)
+        plt.subplot(211)
+        plt.plot(t,signal);
+        plt.xlim([.2,.3])
+#        plt.title('simulated signal from demo.dat')
+#        plt.subplot(312)
+#        plt.plot(t,book.signals[1][0]); 
+#        plt.title('signal stored in demo\_smp.b')
+#        # this is signal read from the *.b file, should be the same as the original
+        plt.subplot(212)
         plt.plot(t,reconstruction,'r');
+        plt.xlim([.2,.3])
         plt.title('signal reconstructed from MP decomposition')
         plt.show()
         return book

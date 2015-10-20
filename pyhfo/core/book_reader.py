@@ -58,7 +58,7 @@ class BookImporter(object):
 			date_s = np.fromfile(f, '>u1', count=1)[0]
 			return np.dtype([('date', 'S'+str(date_s))])			
 		elif ident == 5: ## signal info
-			print 'here'
+			#print 'here'
 			sig_info_s = np.fromfile(f, '>u1', count=1)[0]
 			return np.dtype([('Fs', '>f4'), ('ptspmV', '>f4'),
 							('chnl_cnt', '>u2')])							
