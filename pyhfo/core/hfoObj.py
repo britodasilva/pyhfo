@@ -90,8 +90,9 @@ class hfoObj(object):
         
         book = BookImporter(f_name+'_smp.b')
         t      = np.linspace(0,len(signal)-1,len(signal))/book.fs
-        Eatoms = 0
+        #Eatoms = 0
         reconstruction = np.zeros(len(t))
+        HFO = False        
         #count = 0
         #print np.mean(signal) + 3*np.std(signal),np.mean(signal) + 5*np.std(signal)
         for i,booknumber in enumerate(book.atoms):
@@ -111,20 +112,9 @@ class hfoObj(object):
                         #if amplitude > np.mean(signal) + 3*np.std(signal):
                         if frequency/(2*np.pi*atom['params']['scale']) < 1:                    
                             reconstruction += amplitude*np.exp(-np.pi*((t-position)/width)**2)*np.cos(2*np.pi*frequency*(t-position)+phase)
-                Eatoms += atom['params']['modulus'] 
-        plt.subplot(211)
-        plt.plot(t,signal);
-        plt.xlim([.2,.3])
-#        plt.title('simulated signal from demo.dat')
-#        plt.subplot(312)
-#        plt.plot(t,book.signals[1][0]); 
-#        plt.title('signal stored in demo\_smp.b')
-#        # this is signal read from the *.b file, should be the same as the original
-        plt.subplot(212)
-        plt.plot(t,reconstruction,'r');
-        plt.xlim([.2,.3])
-        plt.title('signal reconstructed from MP decomposition')
-        plt.show()
-        return book
+                            HFO = True
+                            break
+                #Eatoms += atom['params']['modulus']           
+        return HFO,reconstruction
 
    

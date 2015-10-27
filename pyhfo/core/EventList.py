@@ -321,8 +321,30 @@ class EventList(object):
         y= KMeans(n_clusters=n_clusters).fit(at.T)
         for ix, hfo in enumerate(self.event):
             hfo.__set_cluster__(y.labels_[ix])
+            
+    def HFO_MPfilt(self):
+        import sys
+        for hfo in self:
+            print '.',
+            sys.stdout.flush()
+            G1 = EventList(self.ch_labels,self.time_edge)             
+            G2 = EventList(self.ch_labels,self.time_edge)
+            try:
+                test,reconstruction = hfo.MP()
+            except IndexError:
+                G2.__addEvent__(hfo)
+                continue
+            
+            if test:
+                hfo.MP_rec = reconstruction
+                G1.__addEvent__(hfo)
+            else:
+                G2.__addEvent__(hfo)
+        return G1,G2
 
 
     def reset_cluster(self):
         for hfo in self.event:
             hfo.__set_cluster__(0)
+            
+        

@@ -300,3 +300,58 @@ def dualQ(x,Q1,r1,J1,Q2,r2,J2,lam1,lam2,mu,Nit):
     x1 = itqwt_radix2(w1,Q1,r1,L)
     x2 = itqwt_radix2(w2,Q2,r2,L)
     return x1,x2,w1,w2,costfn
+    
+def tqwt_bp(x,Q,r,J,lam,mu,Nit):
+    L = x.shape[0]
+    N = 1<<(L-1).bit_length()
+    if L<N:
+        x = np.pad(x,(0,N-L),'constant')
+    w = tqwt_radix2(x,Q,r,J)
+    d = tqwt_radix2(np.zeros(x.shape[0]),Q,r,J)
+    
+    T = lam/(2*mu)
+    
+    u = dict()
+    costfn = np.zeros(Nit)
+    N = x.shape[0]
+    
+    for k in range(Nit):
+        for j in range(J):
+            u[j] = soft(w[j] + d[j], T[j])- d[j]
+                
+        d = tqwt_radix2(x - itqwt_radix2(u,Q,r,N),Q,r,J)
+        costfn[k] = 0
+        for j in range(J):
+            w[j] = d[j] + u[j]
+            costfn[k] = costfn[k] + lam[j]*np.sum(np.abs(w[j]))
+            
+    y = itqwt_radix2(w, Q, r, N)
+    return y, costfn
+    
+    
+def tqwt_bpd(x,Q,r,J,lam,mu,Nit):
+    L = x.shape[0]
+    N = 1<<(L-1).bit_length()
+    if L<N:
+        x = np.pad(x,(0,N-L),'constant')
+    w = tqwt_radix2(x,Q,r,J)
+    d = tqwt_radix2(np.zeros(x.shape[0]),Q,r,J)
+    
+    T = lam/(2*mu)
+    
+    u = dict()
+    costfn = np.zeros(Nit)
+    N = x.shape[0]
+    C = 1/(mu+1)
+    for k in range(Nit):
+        for j in range(J):
+            u[j] = soft(w[j] + d[j], T[j])- d[j]
+                
+        d = tqwt_radix2(C*x - C*itqwt_radix2(u,Q,r,N),Q,r,J)
+        costfn[k] = 0
+        for j in range(J):
+            w[j] = d[j] + u[j]
+            costfn[k] = costfn[k] + lam[j]*np.sum(np.abs(w[j]))
+            
+    y = itqwt_radix2(w, Q, r, N)
+    return y, costfn
