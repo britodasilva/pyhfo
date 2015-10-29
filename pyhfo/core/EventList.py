@@ -128,7 +128,7 @@ class EventList(object):
         display(vbox)
         
         
-    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None):
+    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
         """
         Plot spike cluster. If event list contains HFO raise error. 
         
@@ -154,7 +154,7 @@ class EventList(object):
         def ploting(self,idx):
             clear_output()
             if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi)
+                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
                 
             if self.event[0].htype == 'HFO':
                 evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
@@ -324,15 +324,18 @@ class EventList(object):
             
     def HFO_MPfilt(self):
         import sys
-        for hfo in self:
-            print '.',
+        G1 = EventList(self.ch_labels,self.time_edge)             
+        G2 = EventList(self.ch_labels,self.time_edge)
+        for idx,hfo in enumerate(self):
+            print ' ('+str(idx)+') ',
             sys.stdout.flush()
-            G1 = EventList(self.ch_labels,self.time_edge)             
-            G2 = EventList(self.ch_labels,self.time_edge)
+           
             try:
                 test,reconstruction = hfo.MP()
+                print test,
             except IndexError:
                 G2.__addEvent__(hfo)
+                print 'Fail',                
                 continue
             
             if test:
