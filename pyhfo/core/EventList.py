@@ -93,7 +93,7 @@ class EventList(object):
         def ploting(self,idx):
             clear_output()
             if self.event[idx].htype == 'Spike':
-                plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,saveplot=saveplot,**kwargs)
+                plot_single_spk(self.event[idx], figure_size=figure_size, dpi = dpi,**kwargs)
             
             if self.event[idx].htype == 'HFO':
                 if cutoff:
@@ -128,9 +128,9 @@ class EventList(object):
         display(vbox)
         
         
-    def plot_cluster(self,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
+    def plot_cluster(self,cluster=0,channel = 0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
         """
-        Plot spike cluster. If event list contains HFO raise error. 
+        Plot spike/hfo cluster.
         
         Parameters
         ----------
@@ -151,43 +151,66 @@ class EventList(object):
 #        if 'HFO' in htypes:
 #            raise Exception('HFO htype not accepted')
 
-        def ploting(self,idx):
+        def ploting(self,idx,idx2):
             clear_output()
+            evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx and self.event[x].channel == idx2]
             if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
+                plot_spk_cluster(self,idx,idx2,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
                 
             if self.event[0].htype == 'HFO':
-                evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx]
+                
                 plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi,saveplot=saveplot)
-            plt.suptitle('Cluster ' + str(idx) +' (' +str(len(evlist)) +')')
+            plt.suptitle('Channel ' + str(idx2) + ', Cluster ' + str(idx) +' (' +str(len(evlist)) +')')
             
-        def f_button(clicked):
-            idx = event.add(1)
-            ploting(self,idx)
+        def f_button1(clicked):
+            idx = clu_idx.add(1)
+            idx2 = ch_idx.ind
+            ploting(self,idx,idx2)
             
                 
         
-        def b_button(clicked):
-            idx = event.add(-1)
-            ploting(self,idx)
+        def b_button1(clicked):
+            idx = clu_idx.add(-1)
+            idx2 = ch_idx.ind
+            ploting(self,idx,idx2)
+        
+        def f_button2(clicked):
+            idx = clu_idx.ind
+            idx2 = ch_idx.add(1)
+            ploting(self,idx,idx2)
             
+                
+        
+        def b_button2(clicked):
+            idx = clu_idx.ind
+            idx2 = ch_idx.add(-1)
+            ploting(self,idx,idx2)            
         
         if self.event[0].htype == 'HFO':
             if not hasattr(self.event[0],'cluster'):
                 self.HFO_clustering()
             
         
-        ploting(self,cluster)
+        ploting(self,cluster,channel)
 
-        event = IndexObj(cluster)
+        clu_idx = IndexObj(cluster)
+        ch_idx = IndexObj(channel)
             
-        buttonf = widgets.Button(description = ">>")
-        buttonb = widgets.Button(description = "<<")
+        buttonf_clu = widgets.Button(description = ">>")
+        buttonb_clu = widgets.Button(description = "<<")
             
-        buttonf.on_click(f_button)
-        buttonb.on_click(b_button)
+        buttonf_clu.on_click(f_button1)
+        buttonb_clu.on_click(b_button1)
+        
+        buttonf_ch = widgets.Button(description = ">>")
+        buttonb_ch = widgets.Button(description = "<<")
+            
+        buttonf_ch.on_click(f_button2)
+        buttonb_ch.on_click(b_button2)
+        clus = widgets.Latex('cluster: ')
+        chan = widgets.Latex('channel: ')
         vbox = widgets.Box()
-        vbox.children = [buttonb,buttonf]        
+        vbox.children = [clus,buttonb_clu,buttonf_clu,chan,buttonb_ch,buttonf_ch]        
         display(vbox)
         
     def plot_all_spk_clusters(self,plot_mean = True,figure_size=(10,10),dpi=600):
@@ -224,7 +247,7 @@ class EventList(object):
             c +=1
             
             
-    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude = [],figure_size=(15,5),dpi=600, line = True,common=False):
+    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude_chan = [],exclude_clus = [],figure_size=(15,10),dpi=600, line = True,common=False):
         """
         Plot rastergram 
         
@@ -245,20 +268,19 @@ class EventList(object):
             600 - DPI resolution
         """
        
-        htype = self.event[0].htype
         if ax == None:
              # Creating the figure 
             f = plt.figure(figsize=figure_size,dpi=dpi)
             # creating the axes
             ax = f.add_subplot(111)
-        if htype == 'Spike':
-            cluster  = self.__getlist__('cluster')
-        elif htype == 'HFO':
-            cluster  = range(len(self.ch_labels))
+        
+        cluster  = self.__getlist__('cluster')
+        channels = self.__getlist__('channel')        
         if time_edge == None:
             time_edge = self.time_edge
                 
         num_clus = int(np.max(cluster))+1
+        num_chan = int(np.max(channels))+1
         
         label = []
         c_l = 0
@@ -266,26 +288,25 @@ class EventList(object):
             label.append('Common_ref')
             objs = [x for x in self.event if x.channel == 'common']
             for ev in objs:
-                rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
+                rect = patches.Rectangle((ev.tstamp,c_l),0.0001,.8, lw=0.25) 
                 ax.add_patch(rect)
             if line:
                 plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
             c_l += 1
         else:
-            for clus in [x for x in range(num_clus) if x not in exclude]:
-                label.append(self.ch_labels[clus])
-                if htype == 'Spike':
-                    objs = [x for x in self.event if x.cluster == clus]
-                   
-                elif htype == 'HFO':
-                    objs = [x for x in self.event if x.channel == clus]
-                for ev in objs:
-                    rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
-                    ax.add_patch(rect)
+            for chan in [x for x in range(num_chan) if x not in exclude_chan]:           
+                for clus in [x for x in range(num_clus) if x not in exclude_clus]:
                     
-                if line:
-                    plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
-                c_l += 1
+                    objs = [x for x in self.event if x.channel == chan and x.cluster == clus]
+                    if len(objs) > 0:
+                        label.append(self.ch_labels[chan]+'_'+str(clus))
+                        for ev in objs:
+                            rect = patches.Rectangle((ev.tstamp,c_l),0.001,.8, lw=0.5) 
+                            ax.add_patch(rect)
+                            
+                        if line:
+                            plt.hlines(c_l+.5,time_edge[0],time_edge[1],colors='c')
+                        c_l += 1
         
             
         ax.set_ylim(0,c_l)

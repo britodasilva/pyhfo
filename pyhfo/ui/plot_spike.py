@@ -39,14 +39,15 @@ def plot_single_spk(spk,subplot = None, spines = ['left', 'bottom'],
     else:
         ax = subplot
     #ax.plot(range(-20,44),spk.waveform,**kwargs)
-    ax.plot(spk.waveform,**kwargs)
-    
+    time_vec  = np.linspace(spk.time_edge[0],spk.time_edge[1],spk.waveform.shape[0],endpoint=True)*1000
+    ax.plot(time_vec,spk.waveform,**kwargs)
+    plt.xlabel('Time (ms)')
     adjust_spines(ax, spines)
     
     
     
     
-def plot_spk_cluster(evlist,cluster,color='b',ax = None, spines = [], plot_mean = True,figure_size=(5,5),dpi=600):
+def plot_spk_cluster(evlist,cluster,channel,color='b',ax = None, spines = [], plot_mean = True,figure_size=(5,5),dpi=600):
     """
     Function to plot cluster of spikes
     
@@ -74,22 +75,25 @@ def plot_spk_cluster(evlist,cluster,color='b',ax = None, spines = [], plot_mean 
         ax = f.add_subplot(111)
     spikes = np.array([]) # creating a empty array 
      
-    objs = [x for x in evlist.event if x.cluster == cluster]
+    objs = [x for x in evlist.event if x.cluster == cluster and x.channel == channel]
     npspk, = objs[0].waveform.shape
+    time_vec  = np.linspace(objs[0].time_edge[0],objs[0].time_edge[1],npspk,endpoint=True)*1000
     for sp in objs:
-        #ax.plot(range(-20,44),sp.waveform,color=color,lw=0.5)
-        ax.plot(sp.waveform,color=color,lw=0.5)
+        
+        ax.plot(time_vec,sp.waveform,color=color,lw=0.5)
+        #ax.plot(sp.waveform,color=color,lw=0.5)
                 
         spikes = np.append(spikes, sp.waveform)
         
     if plot_mean and len(evlist.event)>1:
         spikes = spikes.reshape(len(objs),npspk)
-        #ax.plot(range(-20,44),np.mean(spikes,axis=0),'k',lw=2)
-        #ax.plot(range(-20,44),np.mean(spikes,axis=0)-np.std(spikes,axis=0),'k',lw=1)
-        #ax.plot(range(-20,44),np.mean(spikes,axis=0)+np.std(spikes,axis=0),'k',lw=1)
-        ax.plot(np.mean(spikes,axis=0),'k',lw=2)
-        ax.plot(np.mean(spikes,axis=0)-np.std(spikes,axis=0),'k',lw=1)
-        ax.plot(np.mean(spikes,axis=0)+np.std(spikes,axis=0),'k',lw=1)
+        ax.plot(time_vec,np.mean(spikes,axis=0),'k',lw=2)
+        ax.plot(time_vec,np.mean(spikes,axis=0)-np.std(spikes,axis=0),'k',lw=1)
+        ax.plot(time_vec,np.mean(spikes,axis=0)+np.std(spikes,axis=0),'k',lw=1)
+        plt.xlabel('Time (ms)')
+        #ax.plot(np.mean(spikes,axis=0),'k',lw=2)
+        #ax.plot(np.mean(spikes,axis=0)-np.std(spikes,axis=0),'k',lw=1)
+        #ax.plot(np.mean(spikes,axis=0)+np.std(spikes,axis=0),'k',lw=1)
     adjust_spines(ax, spines)
 
     

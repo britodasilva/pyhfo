@@ -180,7 +180,7 @@ def loadSPK_waveclus(filename,time_edge=(0,60)):
         tstamp = times[idx]
         clus = clusters[idx]
         feat= features[idx]
-        spk = SpikeObj(waveform,tstamp,clus,feat)
+        spk = SpikeObj(0,waveform,tstamp,clus,feat)
         Spikes.__addEvent__(spk)
     return Spikes
     

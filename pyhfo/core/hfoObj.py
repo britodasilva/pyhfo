@@ -16,7 +16,7 @@ class hfoObj(object):
     def __repr__(self):
         return str(self.tstamp)
 
-    def __init__(self,channel,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info):
+    def __init__(self,channel,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,sample_rate,cutoff,info,cluster = 0):
         self.htype = 'HFO'
         self.channel = channel              # channel  
         self.tstamp = tstamp                # Time stamp in sec. (center of event- max amp)
@@ -36,7 +36,7 @@ class hfoObj(object):
         self.duration = self.end_sec - self.start_sec  # calculate the event duration
         self.spectrum = HFOSpectrum(self,cutoff) # spectrum object
         self.peak_amp = np.max(np.abs(waveform[:,1])) # get the peak amplitude value
-        
+        self.cluster = cluster
         
     def plot(self,envelope = True, figure_size = (15,10),dpi=600):        
         plot_single_hfo(self, envelope = envelope, figure_size = figure_size,dpi=dpi)
