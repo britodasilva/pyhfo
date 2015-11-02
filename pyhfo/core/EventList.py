@@ -35,9 +35,11 @@ class EventList(object):
             for index in indexes:
                 del self.event[index]
         
-    def delete_cluster(self,cluster):
-        clu = self.__getlist__('cluster')
-        to_remove = np.nonzero(clu == cluster)[0]
+    def delete_cluster(self,channel,cluster):
+        #clu = self.__getlist__('cluster')
+        #cha = self.__getlist__('channel')
+        #to_remove = np.nonzero(clu == cluster and cha == channel)[0]
+        to_remove = [x for x in range(len(self.event)) if self.event[x].cluster==cluster and self.event[x].channel == channel]
         self.__removeEvent__(to_remove)
     def __repr__(self):
         return '%s events' % len(self.event)
@@ -128,7 +130,7 @@ class EventList(object):
         display(vbox)
         
         
-    def plot_cluster(self,cluster=0,channel = 0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
+    def plot_cluster(self,channel = 0,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
         """
         Plot spike/hfo cluster.
         
@@ -155,13 +157,14 @@ class EventList(object):
             clear_output()
             evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx and self.event[x].channel == idx2]
             if self.event[0].htype == 'Spike':
-                plot_spk_cluster(self,idx,idx2,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
+                if len(evlist) > 0:
+                    plot_spk_cluster(self,idx,idx2,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
                 
             if self.event[0].htype == 'HFO':
                 
                 plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi,saveplot=saveplot)
             plt.suptitle('Channel ' + str(idx2) + ', Cluster ' + str(idx) +' (' +str(len(evlist)) +')')
-            
+            plt.show()            
         def f_button1(clicked):
             idx = clu_idx.add(1)
             idx2 = ch_idx.ind
@@ -184,7 +187,13 @@ class EventList(object):
         def b_button2(clicked):
             idx = clu_idx.ind
             idx2 = ch_idx.add(-1)
-            ploting(self,idx,idx2)            
+            ploting(self,idx,idx2)  
+            
+        def delete(clicked):
+            idx = clu_idx.ind
+            idx2 = ch_idx.ind
+            self.delete_cluster(idx2,idx)
+            ploting(self,idx,idx2)  
         
         if self.event[0].htype == 'HFO':
             if not hasattr(self.event[0],'cluster'):
@@ -204,13 +213,17 @@ class EventList(object):
         
         buttonf_ch = widgets.Button(description = ">>")
         buttonb_ch = widgets.Button(description = "<<")
-            
+        
+        button_del = widgets.Button(description = "del")
+        
         buttonf_ch.on_click(f_button2)
         buttonb_ch.on_click(b_button2)
+        button_del.on_click(delete)
+        
         clus = widgets.Latex('cluster: ')
         chan = widgets.Latex('channel: ')
         vbox = widgets.Box()
-        vbox.children = [clus,buttonb_clu,buttonf_clu,chan,buttonb_ch,buttonf_ch]        
+        vbox.children = [button_del,clus,buttonb_clu,buttonf_clu,chan,buttonb_ch,buttonf_ch]        
         display(vbox)
         
     def plot_all_spk_clusters(self,plot_mean = True,figure_size=(10,10),dpi=600):

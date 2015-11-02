@@ -41,7 +41,17 @@ def open_file_DAT(folder,ports,nchans,srate,bsize=None,starttime = 0):
     
     Data = DataObj(data,srate,amp_unit,labels,time_vec,[])
     return Data
-    
+
+
+def getDATduration(folder,port,ch):
+    root =  'amp-'+port+'-'    
+    x = str(ch)
+    while len(x)<3:
+        x = '0' + x
+    fname = root + x + '.dat'
+    fh = open(folder+fname,'r')
+    data = np.fromfile(fh, dtype=np.short, count=-1)
+    return data.shape[0]    
     
 def pca2(data):
 

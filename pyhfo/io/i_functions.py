@@ -59,7 +59,7 @@ def open_dataset(file_name,dataset_name,htype = 'auto'):
         bad_channels = dataset.attrs["Bad_channels"]    
         # Creating dictionary
         Data = DataObj(dataset[:],sample_rate,amp_unit,dataset.attrs['Channel_Labels'],time_vec,bad_channels,file_name,dataset_name)
-        
+    
     elif htype == 'list':
         # Time vector
         keys  = dataset.keys()
@@ -70,13 +70,15 @@ def open_dataset(file_name,dataset_name,htype = 'auto'):
             waveform =  dataset[k][:]
             tstamp = dataset[k].attrs['tstamp']
             evhtype = dataset[k].attrs['htype']
+            channel = dataset[k].attrs['channel']
             if evhtype == 'Spike':
                 clus = dataset[k].attrs['cluster']
-                feat = dataset[k].attrs['features'] 
-                spk = SpikeObj(waveform,tstamp,clus,feat)
+                feat = dataset[k].attrs['features']
+                time_edge = dataset[k].attrs['time_edge'] 
+                spk = SpikeObj(channel,waveform,tstamp,clus,feat,time_edge)
                 Data.__addEvent__(spk)
             elif evhtype == 'HFO':
-                channel = dataset[k].attrs['channel']
+                
                 tstamp_idx = dataset[k].attrs['tstamp_idx'] 
                 start_idx  = dataset[k].attrs['start_idx']
                 end_idx  = dataset[k].attrs['end_idx']
@@ -156,15 +158,15 @@ def loadMAT(slice_filename,parameters_filename):
     return Data
     
     
-def loadSPK_waveclus(filename,time_edge=(0,60)):
+def loadSPK_waveclus(filename,EventList,ch):
     '''
     load Spikes sorted by wave_clus.
     Parameters
     ----------
     filename: str
         Name of the spike (.mat) file 
-    time_edge: tupple
-        (0,60) (default) - Determine the x-axis limits in seconds. 
+    EventList: EventList
+    
     '''
     
     mat = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
@@ -175,13 +177,13 @@ def loadSPK_waveclus(filename,time_edge=(0,60)):
     labels = []
     for cl in range(int(max(clusters))+1):
         labels.append('Cluster '+str(cl))
-    Spikes = EventList(labels,time_edge)
     for idx,waveform in enumerate(spikes):
         tstamp = times[idx]
         clus = clusters[idx]
         feat= features[idx]
-        spk = SpikeObj(0,waveform,tstamp,clus,feat)
-        Spikes.__addEvent__(spk)
-    return Spikes
+        time_edge = [-20,44]
+        spk = SpikeObj(ch,waveform,tstamp,clus,feat,time_edge)
+        EventList.__addEvent__(spk)
+    return EventList
     
     

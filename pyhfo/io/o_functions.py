@@ -47,8 +47,10 @@ def save_dataset(Obj,file_name,obj_name):
                 dataset  = group.create_dataset(name,data=ev.waveform)
                 dataset.attrs.create('htype',ev.htype)
                 dataset.attrs.create('tstamp',ev.tstamp)
+                dataset.attrs.create('channel', ev.channel)
                 dataset.attrs.create('cluster',ev.cluster)
                 dataset.attrs.create('features',ev.features)
+                dataset.attrs.create('time_edge',ev.time_edge)
             elif ev.htype == 'HFO':
                 dataset  = group.create_dataset(name,data=ev.waveform)
                 dataset.attrs.create('htype', ev.htype)
@@ -63,3 +65,4 @@ def save_dataset(Obj,file_name,obj_name):
                 dataset.attrs.create('info', ev.info)
             
     h5.close()
+    

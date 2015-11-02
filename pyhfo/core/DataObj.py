@@ -103,7 +103,7 @@ class DataObj(object):
             False (default) - exclude bad channels from plot
         exclude: list 
             Channels to exclude from plot
-        gride: boolean
+        grid: boolean
             True (default) - plot grid
         xtickspace: int 
             1 (default) - distance of tick in seconds
