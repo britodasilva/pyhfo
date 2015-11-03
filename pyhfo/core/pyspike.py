@@ -10,7 +10,103 @@ from copy import copy
 from DataObj import *
 from EventList import *
 from SpikeObj import *
+import os
+import matlab.engine
+import scipy.io as sio
 
+def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
+    
+    fh = open(folder+fname,'r')
+    fh.seek(0)
+    data = np.fromfile(fh, dtype=np.short, count=-1)
+    fh.close()
+    clear_clus_folder(clus_folder)
+    name = fname[:-4] 
+    data = np.double(data)
+    sio.savemat(clus_folder+name+'.mat', {'data':data})
+    f = open(clus_folder + 'Files.txt', 'w')
+    f.write(name +'\n')
+    f.close()
+    eng = matlab.engine.start_matlab()
+    eng.cd(clus_folder,nargout=0)
+    eng.Get_spikes(nargout=0)
+    eng.Do_clustering(nargout=0)
+    eng.close('all', nargout=0)
+    eng.quit()
+    fname = clus_folder + 'times_' + name +'.mat'
+    if os.path.isfile(fname): 
+        SPK = loadSPK_waveclus(fname,SPK,ch)
+    
+    return SPK
+
+def get_len(folder,fname):
+    fh = open(folder+fname,'r')
+    fh.seek(0)
+    data = np.fromfile(fh, dtype=np.short, count=-1)
+    fh.close()
+    return data.shape[0]
+    
+def loadSPK_waveclus(filename,EventList,ch):
+    '''
+    load Spikes sorted by wave_clus.
+    Parameters
+    ----------
+    filename: str
+        Name of the spike (.mat) file 
+    EventList: EventList
+    
+    '''
+    
+    mat = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
+    clusters = mat['cluster_class'][:,0]
+    times = mat['cluster_class'][:,1]/1000
+    spikes = mat['spikes']
+    features = mat['inspk']
+    labels = []
+    for cl in range(int(max(clusters))+1):
+        labels.append('Cluster '+str(cl))
+    for idx,waveform in enumerate(spikes):
+        tstamp = times[idx]
+        clus = clusters[idx]
+        feat= features[idx]
+        time_edge = [-20,44]
+        spk = SpikeObj(ch,waveform,tstamp,clus,feat,time_edge)
+        EventList.__addEvent__(spk)
+    return EventList
+
+def clear_clus_folder(clus_folder):
+    os.chdir(clus_folder)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".mat") ]
+    for f in filelist:
+        os.remove(f)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".mat500") ]
+    for f in filelist:
+        os.remove(f)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".mat400") ]
+    for f in filelist:
+        os.remove(f)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".lab") ]
+    for f in filelist:
+        os.remove(f)
+#    filelist = [ f for f in os.listdir(".") if f.endswith(".jpg") ]
+#    for f in filelist:
+#        os.remove(f)
+    filelist = [ f for f in os.listdir(".") if f.endswith("01") ]
+    for f in filelist:
+        os.remove(f)
+    filelist = [ f for f in os.listdir(".") if f.endswith("run") ]
+    for f in filelist:
+        os.remove(f)
+
+
+    
+def getFileList(folder):
+    filelist = os.listdir(folder)
+    label = [f for f in filelist if f.startswith('amp')]
+    label.sort()
+    return label
+    
+    
 def open_file_DAT(folder,ports,nchans,srate,bsize=None,starttime = 0):
     if bsize == None:
         bsize = srate
