@@ -186,4 +186,21 @@ def loadSPK_waveclus(filename,EventList,ch):
         EventList.__addEvent__(spk)
     return EventList
     
+
+
+def loadDAT(filename,srate):
+    fh = open(filename,'r')
+    fh.seek(0)
+    data = np.fromfile(fh, dtype=np.short, count=-1)
+    fh.close()
+    data = np.double(data)
+    data *= 0.195 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
+    amp_unit = '$\mu V$'
+    # Time vector   
+    n_points  = data.shape[0]
+    end_time  = n_points/srate
+    time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
     
+    Data = DataObj(data,srate,amp_unit,'data',time_vec,[])
+    return Data
+        

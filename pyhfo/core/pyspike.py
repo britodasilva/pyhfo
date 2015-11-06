@@ -13,6 +13,7 @@ from SpikeObj import *
 import os
 import matlab.engine
 import scipy.io as sio
+import shutil
 
 def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
     
@@ -31,6 +32,7 @@ def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
     eng.cd(clus_folder,nargout=0)
     eng.Get_spikes(nargout=0)
     eng.Do_clustering(nargout=0)
+    move_figs(folder,clus_folder)
     eng.close('all', nargout=0)
     eng.quit()
     fname = clus_folder + 'times_' + name +'.mat'
@@ -39,6 +41,13 @@ def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
     
     return SPK
 
+
+def move_figs(folder,clus_folder):
+    os.chdir(clus_folder)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".jpg") ]
+    for f in filelist:
+        shutil.move(clus_folder+f,folder+f)
+    
 def get_len(folder,fname):
     fh = open(folder+fname,'r')
     fh.seek(0)
@@ -58,20 +67,21 @@ def loadSPK_waveclus(filename,EventList,ch):
     '''
     
     mat = sio.loadmat(filename, struct_as_record=False, squeeze_me=True)
-    clusters = mat['cluster_class'][:,0]
-    times = mat['cluster_class'][:,1]/1000
-    spikes = mat['spikes']
-    features = mat['inspk']
-    labels = []
-    for cl in range(int(max(clusters))+1):
-        labels.append('Cluster '+str(cl))
-    for idx,waveform in enumerate(spikes):
-        tstamp = times[idx]
-        clus = clusters[idx]
-        feat= features[idx]
-        time_edge = [-20,44]
-        spk = SpikeObj(ch,waveform,tstamp,clus,feat,time_edge)
-        EventList.__addEvent__(spk)
+    if mat['cluster_class'].size > 0:
+        clusters = mat['cluster_class'][:,0]
+        times = mat['cluster_class'][:,1]/1000
+        spikes = mat['spikes']
+        features = mat['inspk']
+        labels = []
+        for cl in range(int(max(clusters))+1):
+            labels.append('Cluster '+str(cl))
+        for idx,waveform in enumerate(spikes):
+            tstamp = times[idx]
+            clus = clusters[idx]
+            feat= features[idx]
+            time_edge = [-20,44]
+            spk = SpikeObj(ch,waveform,tstamp,clus,feat,time_edge)
+            EventList.__addEvent__(spk)
     return EventList
 
 def clear_clus_folder(clus_folder):
@@ -88,9 +98,6 @@ def clear_clus_folder(clus_folder):
     filelist = [ f for f in os.listdir(".") if f.endswith(".lab") ]
     for f in filelist:
         os.remove(f)
-#    filelist = [ f for f in os.listdir(".") if f.endswith(".jpg") ]
-#    for f in filelist:
-#        os.remove(f)
     filelist = [ f for f in os.listdir(".") if f.endswith("01") ]
     for f in filelist:
         os.remove(f)

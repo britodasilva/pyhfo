@@ -30,15 +30,16 @@ def decimate(Data,q):
         npoints = data.shape[0]
     else:
         npoints, nch = data.shape
-    # creating a empty array
-    new_data = np.empty((npoints/q,nch))
-    new_data[:] = np.NAN
+    
     # decimate each channel
     if nch == 1:
-        new_data = sig.decimate(data,q)
+        new_data = sig.decimate(data,q,ftype='fir')
     else:
+        # creating a empty array
+        new_data = np.empty((npoints/q,nch))
+        new_data[:] = np.NAN
         for ch in range(nch):
-            new_data[:,ch] = sig.decimate(data[:,ch],q)
+            new_data[:,ch] = sig.decimate(data[:,ch],q,ftype='fir')
     # calculate new sample rate    
     new_sample_rate = Data.sample_rate/q
     # creating new time_vec
@@ -66,14 +67,25 @@ def resample(Data,q):
     else:
         #reading data
         data = Data.data
-        new_data = data[0:-1:q,:]
+        if len(data.shape) == 1:
+            nch = 1
+            npoints = data.shape[0]
+        else:
+            npoints, nch = data.shape
+        
+        # decimate each channel
+        if nch == 1:
+            new_data = data[0:-1:q]
+        else:
+            new_data = data[0:-1:q,:]
+       
         # calculate new sample rate    
         new_sample_rate = Data.sample_rate/q
         # creating new time_vec
         new_time_vec = Data.time_vec[0:-1:q]
         # creating new DataObj
         newData = DataObj(new_data,new_sample_rate,Data.amp_unit,Data.ch_labels,new_time_vec,Data.bad_channels)
-    return newData
+        return newData
 
     
 def merge(Data1,Data2,new_time = False):
