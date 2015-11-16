@@ -9,4 +9,5 @@ from io import open_dataset,save_dataset
 from ui import plot_eeg
 from core import *
 from version import version
+import sim
 __version__ = version

@@ -14,8 +14,9 @@ import os
 import matlab.engine
 import scipy.io as sio
 import shutil
+import h5py
 
-def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
+def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK,max_points = 90000000 ):
     
     fh = open(folder+fname,'r')
     fh.seek(0)
@@ -24,9 +25,20 @@ def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK):
     clear_clus_folder(clus_folder)
     name = fname[:-4] 
     data = np.double(data)
-    sio.savemat(clus_folder+name+'.mat', {'data':data})
+    
     f = open(clus_folder + 'Files.txt', 'w')
     f.write(name +'\n')
+    if data.shape[0]>max_points:
+        nseg = 10
+        for j in range(nseg):
+            tsmin = int((j)*np.floor(data.shape[0]/nseg))
+            tsmax = int((j+1)*np.floor(data.shape[0]/nseg))
+            sio.savemat(clus_folder+name+'_'+str(j)+'.mat', {'data':data[tsmin:tsmax]})
+            f.write(name+'_'+str(j) +'\n')
+    else:
+        sio.savemat(clus_folder+name+'.mat', {'data':data})
+     
+    
     f.close()
     eng = matlab.engine.start_matlab()
     eng.cd(clus_folder,nargout=0)

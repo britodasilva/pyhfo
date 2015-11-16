@@ -71,6 +71,9 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
             ths_value = np.percentile(env,75) + ths*(np.percentile(env,75)-np.percentile(env,25))
         elif ths_method == 'percentile':
             ths_value = np.percentile(env,ths)
+        elif ths_method == 'Quian':
+            ths_value = ths * np.median(np.abs(env)) / 0.6745
+            
             
         return env,ths_value
     
@@ -149,12 +152,13 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
         print 'Using Parallel processing',
         print str(len(rc.ids)) + ' cores'
         sys.stdout.flush()
+    if order == None:
+        order = int(sample_rate/10)
     if filter_test:
         filtOBj = eegfilt(Data,low_cut, high_cut,order,window,filter_test)
         return
 
-    if order == None:
-        order = int(sample_rate/10)
+    
     info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) + '; whiteting = ' + str(whitening)
     print info
     if whitening:
