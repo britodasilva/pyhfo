@@ -10,7 +10,7 @@ import scipy.signal as sig
 
 def pinknoise(N):
     '''
-    Create a pink noise with N points.
+    Create a pink noise (1/f) with N points.
     N - Number of samples to be returned
     '''
     M = N
@@ -38,6 +38,36 @@ def pinknoise(N):
         y = y[:-1]
     return y
     
+    
+def brownnoise(N):
+    '''
+    Create a brown noise (1/f²) with N points.
+    N - Number of samples to be returned
+    '''
+    M = N
+    if N % 2:
+        
+        N += 1
+    x = np.random.randn(N)
+    
+    X = np.fft.fft(x)
+    
+    nPts = int(N/2 + 1)
+    n = range(1,nPts+1)
+   
+    
+    X[range(nPts)] = X[range(nPts)]/n
+    X[range(nPts,N)] = np.real(X[range(N/2-1,0,-1)]) - 1j*np.imag(X[range(N/2-1,0,-1)])
+    
+    y = np.fft.ifft(X)
+    
+    y = np.real(y)
+    
+    y -= np.mean(y)
+    y /= np.sqrt(np.mean(y**2))
+    if M % 2 == 1:
+        y = y[:-1]
+    return y
     
 def wavelet(numcycles,f,srate):
     '''
