@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 import math
 import matplotlib.patches as patches
 from sklearn.cluster import KMeans
+import numpy.matlib
+
 
 class EventList(object):
     def __init__(self,ch_labels,time_edge,file_name = None, dataset_name = None):
@@ -70,6 +72,24 @@ class EventList(object):
             
         
         return attribute
+        
+    def timestamps(self):
+        if len(self.event) > 0:
+            if hasattr(self, '__timestamps__'):
+                if len(self.__timestamps__) != len(self.event) :
+                    aux = self.__getlist__('tstamp')
+                    self.__timestamps__ = aux
+            else:
+                aux = self.__getlist__('tstamp')
+                self.__timestamps__ = aux
+            
+            return self.__timestamps__
+            
+    def times_cluster(self,channel,cluster):
+        return np.array([self.event[x].tstamp for x in range(len(self.event)) if self.event[x].cluster==cluster and self.event[x].channel == channel])
+        
+        
+            
     
     def plot_event(self, ev = 0,figure_size = (5,5), dpi=600,xlim=[-1,1],saveplot = None, cutoff = False ,**kwargs):
         """
@@ -128,9 +148,50 @@ class EventList(object):
         vbox = widgets.Box()
         vbox.children = [buttonb,buttonf]        
         display(vbox)
+
+
+
+    def ISI(self,ch=0,cl=1,t0=0,t1=1000,binsize=10,figure_size=(10,5)):
+        plt.figure(figsize=figure_size)
+        clus = np.round(self.times_cluster(ch,cl)*1000)
+        t_vector = np.diff(clus)
+        ax = plt.subplot(111)
+        n, bins, duu = plt.hist(t_vector,np.arange(t0,t1,binsize))
+        plt.xticks(np.arange(t0,t1,10*binsize),np.arange(t0,t1,10*binsize))
+        plt.xlabel('miliseconds')
+        plt.title('Inter-Spike Interval')
+        adjust_spines(ax,['left','bottom'])
         
+    def auto_corr(self,ch=0,cl=1,t0=0,t1=1000,binsize=10,figure_size=(10,5)):
+        plt.figure(figsize=figure_size)
+        clus = np.round(self.times_cluster(ch,cl)*1000)
+        t_matrix = numpy.matlib.repmat(clus, clus.shape[0], 1)
+        aux = t_matrix - t_matrix.T
+        t_vector = aux.reshape(-1)
+        ax = plt.subplot(111)
+        n, bins, duu = plt.hist(t_vector,np.arange(t0,t1,binsize))
+        plt.xticks(np.arange(t0,t1,10*binsize),np.arange(t0,t1,10*binsize))
+        plt.xlabel('miliseconds')
+        plt.title('Auto-correlogram')
+        adjust_spines(ax,['left','bottom'])
+    
+                    
+    def cross_corr(self,ch1=0,cl1=1,ch2=0,cl2=2,t0=0,t1=1000,binsize=10,figure_size=(10,5)):
+        plt.figure(figsize=figure_size)
+        clus1 = np.round(self.times_cluster(ch1,cl1)*1000)
+        clus2 = np.round(self.times_cluster(ch2,cl2)*1000)
+        spk1matrix = numpy.matlib.repmat(clus1, clus2.shape[0], 1)
+        spk2matrix = numpy.matlib.repmat(clus2, clus1.shape[0], 1)
+        dif = spk1matrix - spk2matrix.T
+        t_vector = dif.reshape(-1) 
+        ax = plt.subplot(111)
+        n, bins, duu = plt.hist(t_vector,np.arange(t0,t1,binsize))
+        plt.xticks(np.arange(t0,t1,10*binsize),np.arange(t0,t1,10*binsize))
+        plt.xlabel('miliseconds')
+        plt.title('Cross Correlogram')
+        adjust_spines(ax,['left','bottom'])
         
-    def plot_cluster(self,channel = 0,cluster=0,color='blue', spines = [], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
+    def plot_cluster(self,channel = 0,cluster=0,color='blue', spines = ['left','bottom'], plot_mean = True,xlim =[-1,1], figure_size=(10,10),dpi=600,saveplot = None, ax = None):
         """
         Plot spike/hfo cluster.
         
@@ -158,8 +219,10 @@ class EventList(object):
             evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx and self.event[x].channel == idx2]
             if self.event[0].htype == 'Spike':
                 if len(evlist) > 0:
+
                     plot_spk_cluster(self,idx,idx2,color=color, spines = spines, plot_mean = plot_mean, figure_size=figure_size, dpi = dpi, ax=ax)
-                
+                    
+                    
             if self.event[0].htype == 'HFO':
                 
                 plot_mean_hfo(evlist, color = color,  xlim =xlim, figure_size=figure_size,dpi=dpi,saveplot=saveplot)
@@ -259,9 +322,9 @@ class EventList(object):
             sb[l,c].set_title('Cluster ' + str(clus))
             c +=1
             
-            
+    """        
     def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude_chan = [],exclude_clus = [],figure_size=(15,10),dpi=600, line = True,common=False):
-        """
+        
         Plot rastergram 
         
         Parameters
@@ -279,8 +342,7 @@ class EventList(object):
             (5,5) (default) - Size of figure, tuple of integers with width, height in inches 
         dpi: int
             600 - DPI resolution
-        """
-       
+        
         if ax == None:
              # Creating the figure 
             f = plt.figure(figsize=figure_size,dpi=dpi)
@@ -326,8 +388,71 @@ class EventList(object):
         ax.set_xlim(time_edge[0],time_edge[-1])
         plt.yticks(np.arange(c_l)+0.5,label, size=16)
         adjust_spines(ax, spines)
+    """   
+    
+    def rastergram(self, ax = None, spines = ['left','bottom'],time_edge = None, exclude_chan = [],exclude_clus = [],figure_size=(15,10),dpi=600, line = True,common=False):
+        """
+        Plot rastergram 
         
+        Parameters
+        ----------
+        ax: matplotlib axes 
+            None (default) - create a new figure
+            ax - axes of figure where figure should plot
+        spines: str
+            ['left', 'bottom'] (default) - plot figure with left and bottom spines only
+        time_edge: tupple
+            Determine the x-axis limits. 
+        exclude: list 
+            Channels/Cluster to exclude from plot
+        figure_size: tuple
+            (5,5) (default) - Size of figure, tuple of integers with width, height in inches 
+        dpi: int
+            600 - DPI resolution
+        """
+       
+        if ax == None:
+             # Creating the figure 
+            f = plt.figure(figsize=figure_size,dpi=dpi)
+            # creating the axes
+            ax = f.add_subplot(111)
         
+        cluster  = self.__getlist__('cluster')
+        channels = self.__getlist__('channel')        
+        if time_edge == None:
+            time_edge = self.time_edge
+                
+        num_clus = int(np.max(cluster))+1
+        num_chan = int(np.max(channels))+1
+        
+        label = []
+        c_l = 0
+        if common:
+            label.append('Common_ref')
+            objs = [x for x in self.event if x.channel == 'common']
+            ax.scatter(objs,c_l*np.ones(len(objs)),c='k',marker='|')
+            if line:
+                plt.hlines(c_l,time_edge[0],time_edge[1],colors='c')
+            c_l += 1
+        else:
+            for chan in [x for x in range(num_chan) if x not in exclude_chan]:           
+                for clus in [x for x in range(num_clus) if x not in exclude_clus]:
+                    
+                    objs = [x.tstamp for x in self.event if x.channel == chan and x.cluster == clus]
+                    if len(objs) > 0:
+                        label.append(self.ch_labels[chan]+'_'+str(clus))
+                        ax.scatter(objs,c_l*np.ones(len(objs)),c='k',marker='|')
+                        if line:
+                            plt.hlines(c_l,time_edge[0],time_edge[1],colors='c')
+                        c_l += 1
+        
+            
+        ax.set_ylim(-.5,c_l)
+        ax.set_xlim(time_edge[0],time_edge[-1])
+        plt.yticks(np.arange(c_l),label, size=16)
+        plt.xticks(np.arange(self.time_edge[0],self.time_edge[1],600),np.arange(self.time_edge[0],self.time_edge[1],600)/60)
+        plt.xlim([self.time_edge[0],self.time_edge[1]])
+        adjust_spines(ax, spines)  
 #    def save(self,filename = None,datasetname = None ):
 #        if filename == None:
 #            if hasattr(self,'filename'):

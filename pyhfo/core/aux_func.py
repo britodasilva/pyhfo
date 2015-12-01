@@ -5,6 +5,7 @@ Created on Mon Nov 16 10:33:52 2015
 @author: anderson
 """
 import numpy as np
+import time
 
 def find_max(data, thr=None):
     '''
@@ -33,3 +34,15 @@ def find_maxandmin(data, thr=None):
         
         value = [x for x in value if abs(data[x]) > abs(thr)]
     return value 
+    
+class Timer(object):
+    def __init__(self, name=None):
+        self.name = name
+
+    def __enter__(self):
+        self.tstart = time.time()
+
+    def __exit__(self, type, value, traceback):
+        if self.name:
+            print '[%s]' % self.name,
+        print 'Elapsed: %.4f seconds' % (time.time() - self.tstart)
