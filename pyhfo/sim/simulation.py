@@ -37,6 +37,37 @@ def pinknoise(N):
     if M % 2 == 1:
         y = y[:-1]
     return y
+
+
+    
+def brownnoise(N):
+    '''
+    Create a brown noise with N points.
+    N - Number of samples to be returned
+    '''
+    M = N
+    if N % 2:
+        
+        N += 1
+    x = np.random.randn(N)
+    
+    X = np.fft.fft(x)
+    
+    nPts = int(N/2 + 1)
+    n = range(1,nPts+1)
+    
+    X[range(nPts)] = X[range(nPts)]/n
+    X[range(nPts,N)] = np.real(X[range(N/2-1,0,-1)]) - 1j*np.imag(X[range(N/2-1,0,-1)])
+    
+    y = np.fft.ifft(X)
+    
+    y = np.real(y)
+    
+    y -= np.mean(y)
+    y /= np.sqrt(np.mean(y**2))
+    if M % 2 == 1:
+        y = y[:-1]
+    return y
     
     
 def brownnoise(N):
@@ -206,10 +237,17 @@ def whitening(data):
     data = np.append(data,data[-1])
     return data
     
-def filt(x,low_cut=60.,high_cut=600.,sample_rate=2000.):
-    f = [low_cut,high_cut]
-    pass_zero=False
-    window = ('kaiser',0.5)
+def filt(x,low_cut=60.,high_cut=600.,sample_rate=2000.,window = ('gaussian',10)):
+    if high_cut is not None and low_cut is not None:
+        f = [low_cut,high_cut]
+        pass_zero=False
+    elif high_cut is None:
+        f = low_cut
+        pass_zero=False
+    if low_cut is None:
+        f = high_cut       
+        pass_zero=True
+    
     nyq = sample_rate/2
     numtaps = int(sample_rate/10 + 1)
     b = sig.firwin(numtaps,f,pass_zero=pass_zero,window=window,nyq=nyq)
@@ -238,5 +276,42 @@ def ishfo(filtered,x,ths,min_dur = 10., min_separation = 66.):
         
     if start_ix.shape[0] != 0:
         return True
+        if start_ix.shape[0]>1:
+            print start_ix.shape[0]
     else:
         return False
+        
+        
+def calc_stat(data,filtered,ths,start,end,True_ev,v=True):
+    
+    aux = []
+    for s,e in zip(start,end):
+        aux = np.append(aux,ishfo(filtered[int(s):int(e)],data[int(s):int(e)],ths))
+    TP = 0
+    TN = 0
+    FP = 0
+    FN = 0
+    for hf,rs in zip(True_ev,aux):
+        hf = bool(hf)
+        if hf and rs:
+            TP +=1
+        elif hf and not rs:
+            FN +=1
+        elif rs and not hf:
+            FP +=1
+        elif not rs and not hf:
+            TN +=1
+    sens = TP*100./(TP+FN)
+    spec = TN*100./(TN+FP)
+    if v:
+        print '                   HFO          '
+        print '             True   |   False  |  Total'
+        print '______________________________________'
+        print '                    |          |'
+        print ' detected     %3i   |    %3i   |   %3i' % (TP,FP,TP+FP)
+        print '                    |          |'
+        print '   not        %3i   |    %3i   |   %3i' % (FN,TN,TN+FN)
+        print '______________________________________'
+        print '  Total       %3i   |    %3i   |   %3i' % (TP+FN,TN+FP,TP+TN+FP+FN)
+        print '\n sens(%%) = %3i , spec(%%) = %3i' % (sens,spec)
+    return sens,spec

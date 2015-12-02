@@ -15,7 +15,7 @@ import h5py
 
 
 
-def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kaiser',0.5),
+def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gaussian',0.5),
                         ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False,
                         whitening = True,filter_test=False,rc = None ,dview = None):
     '''
@@ -58,7 +58,9 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('kai
     rc: Ipython parallel Clients
     dview: Ipython parallel direct view
     '''
-    
+    if filter_test:
+        filtOBj = eegfilt(Data,low_cut, high_cut,order,window,filter_test)
+        return
     def calc_ths(filt,ths,ths_method,energy):
         if energy:
             env  = np.abs(sig.hilbert(filt))**2

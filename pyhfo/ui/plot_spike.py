@@ -77,7 +77,7 @@ def plot_spk_cluster(evlist,cluster,channel,color='b',ax = None, spines = [], pl
      
     objs = [x for x in evlist.event if x.cluster == cluster and x.channel == channel]
     npspk, = objs[0].waveform.shape
-    time_vec  = np.linspace(objs[0].time_edge[0],objs[0].time_edge[1],npspk,endpoint=True)*1000
+    time_vec  = np.linspace(objs[0].time_edge[0],objs[0].time_edge[1],npspk,endpoint=True)
     for sp in objs:
         
         ax.plot(time_vec,sp.waveform,color=color,lw=0.5)
