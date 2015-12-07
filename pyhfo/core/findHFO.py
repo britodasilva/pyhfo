@@ -6,6 +6,7 @@ Created on Wed May  6 18:04:03 2015
 """
 
 from pyhfo.core import eegfilt, hfoObj, EventList, DataObj
+from pyhfo.sim import Hilbert_energy
 import numpy as np
 import math
 import scipy.signal as sig
@@ -15,7 +16,7 @@ import h5py
 
 
 
-def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gaussian',0.5),
+def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gaussian',10),
                         ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False,
                         whitening = True,filter_test=False,rc = None ,dview = None):
     '''
@@ -63,7 +64,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
         return
     def calc_ths(filt,ths,ths_method,energy):
         if energy:
-            env  = np.abs(sig.hilbert(filt))**2
+            env  = Hilbert_energy(filt,window_size = 10) #np.abs(sig.hilbert(filt))**2
         else:
             env  = np.abs(sig.hilbert(filt))
             
@@ -114,12 +115,17 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
                 aux2 = list(set(aux).intersection(index))
                 
                 if len(aux2) > 0:
-                    print 'excluded'
+                    print 'excluded',
                     continue
             HFOwaveform = env[index]
             tstamp_points = s + np.argmax(HFOwaveform)
             tstamp = Data.time_vec[tstamp_points]
-            Lindex = np.arange(tstamp_points-int(Data.sample_rate/2),tstamp_points+int(Data.sample_rate/2)+1)
+            if tstamp_points-int(Data.sample_rate/2) > 0 and tstamp_points+int(Data.sample_rate/2)+1 < Data.data.shape[0]:
+                Lindex = np.arange(tstamp_points-int(Data.sample_rate/2),tstamp_points+int(Data.sample_rate/2)+1)
+            elif tstamp_points-int(Data.sample_rate/2) < 0:
+                Lindex = np.arange(0,Data.sample_rate+1)
+            elif tstamp_points+int(Data.sample_rate/2)+1 > Data.data.shape[0]:
+                Lindex = np.arange(Data.data.shape[0]-Data.sample_rate-1,Data.data.shape[0])
             
             tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
             waveform = np.empty((Lindex.shape[0],2))
@@ -130,8 +136,12 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
             else:
                 waveform[:,0] = Data.data[Lindex,ch]
                 waveform[:,1] = filtOBj.data[Lindex,ch]
-            start_idx = np.nonzero(Lindex==s)[0][0]
-            end_idx = np.nonzero(Lindex==e)[0][0]
+            try:
+                start_idx = np.nonzero(Lindex==s)[0][0]
+                end_idx = np.nonzero(Lindex==e)[0][0]
+            except IndexError:
+                print s,e                
+                
             hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
             ListObj.__addEvent__(hfo)
             
@@ -166,16 +176,18 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
     if whitening:
         signal = np.diff(Data.data,axis=0)
         signal= np.vstack((signal,signal[-1,:]))
-        time_vec = Data.time_vec
-        amp = Data.amp_unit
-        labels = Data.ch_labels
-        bad_channels = Data.bad_channels
-        if Data.common_ref is not None:
-            common = np.diff(Data.common_ref)
-            common= np.append(common,common[-1])
-            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels,common_ref = common)
-        else:
-            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels)
+    else:
+        signal = Data.data
+    time_vec = Data.time_vec
+    amp = Data.amp_unit
+    labels = Data.ch_labels
+    bad_channels = Data.bad_channels
+    if Data.common_ref is not None:
+        common = np.diff(Data.common_ref)
+        common= np.append(common,common[-1])
+        Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels,common_ref = common)
+    else:
+        Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels)
 
     if Data.common_ref is not None:
         filtOBj = eegfilt(Data,low_cut, high_cut,order,window,rc = rc, dview = dview, common_filt = True)
@@ -206,10 +218,11 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
                 filt = filtOBj.data[:,ch]
                 env,ths_value = calc_ths(filt,ths,ths_method,energy)
                 start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
-                if Data.common_ref is not None:
-                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,Fake)
-                else:
-                    adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None)
+                if start.shape[0]>0 and end.shape[0]>0:
+                    if Data.common_ref is not None:
+                        adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,Fake)
+                    else:
+                        adding_list(start,end,env,Data,filtOBj,ch,HFOs,cutoff,info,None)
             print HFOs
             sys.stdout.flush()
    

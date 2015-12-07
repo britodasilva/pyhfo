@@ -201,8 +201,9 @@ def Quian(env,ths):
 def Hilbert_envelope(x):
     return np.abs(sig.hilbert(x))
 
-def Hilbert_energy(x,window_size = 6):
-    return np.abs(sig.hilbert(x))**2
+def Hilbert_energy(x,window_size = 10):
+    window = np.ones(window_size)/float(window_size)
+    return np.convolve(np.abs(sig.hilbert(x))**2, window, 'same')
     
 def RMS(a, window_size = 6):
     a2 = np.power(a,2)
@@ -274,12 +275,13 @@ def ishfo(filtered,x,ths,min_dur = 10., min_separation = 66.):
         start_ix = np.delete(start_ix, to_remove) # removing
         end_ix = np.delete(end_ix, to_remove) #removing
         
-    if start_ix.shape[0] != 0:
-        return True
+    if start_ix.shape[0] == 1:
+        edg = [start_ix,end_ix]
+        return True, edg
         if start_ix.shape[0]>1:
             print start_ix.shape[0]
     else:
-        return False
+        return False, None
         
         
 def calc_stat(data,filtered,ths,start,end,True_ev,v=True):
