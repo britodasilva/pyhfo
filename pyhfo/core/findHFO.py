@@ -139,11 +139,12 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
             try:
                 start_idx = np.nonzero(Lindex==s)[0][0]
                 end_idx = np.nonzero(Lindex==e)[0][0]
+                hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
+                ListObj.__addEvent__(hfo)
             except IndexError:
-                print s,e                
+                continue      
                 
-            hfo = hfoObj(ch,tstamp,tstamp_idx, waveform,start_idx,end_idx,ths_value,Data.sample_rate,cutoff,info)
-            ListObj.__addEvent__(hfo)
+            
             
     
 

@@ -7,6 +7,8 @@ Created on Sat May  2 16:03:56 2015
 from __future__ import division
 from pyhfo.ui import plot_single_hfo
 from .HFOSpectrum import HFOSpectrum
+from pyhfo.sim import filt
+import scipy.signal as sig
 import numpy as np
 from book_reader import BookImporter
 import matplotlib.pyplot as plt
@@ -35,6 +37,7 @@ class hfoObj(object):
         self.info = info                    # info about the method of detection (cuttofs, order)
         self.duration = self.end_sec - self.start_sec  # calculate the event duration
         self.spectrum = HFOSpectrum(self,cutoff) # spectrum object
+        self.phase = HFOSphase(self) # spectrum object
         self.peak_amp = np.max(np.abs(waveform[:,1])) # get the peak amplitude value
         self.cluster = cluster
         
@@ -117,4 +120,13 @@ class hfoObj(object):
                 #Eatoms += atom['params']['modulus']           
         return HFO,reconstruction
 
-   
+
+class HFOSphase(object):
+    def __init__(self,hfoObj):
+        filtered = filt(hfoObj.waveform[:,0],low_cut=8,high_cut=12,window=('kaiser',2))
+        PHASE = np.angle(sig.hilbert(filtered))
+        k = PHASE[hfoObj.start_idx:hfoObj.end_idx] 
+        self.r = np.sum(np.exp(1j*k))
+        self.angle = np.angle(self.r)
+        self.maginitude = np.abs(self.r)/k.shape[0]
+        

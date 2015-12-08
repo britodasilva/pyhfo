@@ -61,12 +61,16 @@ class EventList(object):
                 attribute = np.append(attribute,vars(ev)[attr])
             elif attr == 'entropy':
                 attribute = [x.entropy for x in self.__getlist__('spectrum')]
-            elif attr == 'peak_freq':
+            elif attr == 'frequency':
                 attribute = [x.peak_freq for x in self.__getlist__('spectrum')]
             elif attr == 'power_index':
                 attribute = [x.power_index for x in self.__getlist__('spectrum')]
             elif attr == 'peak_win_power':
                 attribute = [x.peak_win_power for x in self.__getlist__('spectrum')]
+            elif attr == 'angle':
+                attribute = [x.angle for x in self.__getlist__('phase')]
+            elif attr == 'r':
+                attribute = [x.r for x in self.__getlist__('phase')]
             else:
                 raise Exception('Attribute not found')
             
@@ -508,5 +512,75 @@ class EventList(object):
     def reset_cluster(self):
         for hfo in self.event:
             hfo.__set_cluster__(0)
+            
+    def plot_angle(self,channel=0,cluster=0):
+        def ploting(self,idx,idx2):
+            clear_output()
+            
+            evlist = [self.event[x] for x in range(len(self.event)) if self.event[x].cluster==idx and self.event[x].channel == idx2]
+            if self.event[0].htype == 'Spike':
+                if len(evlist) > 0:
+                    pass
+            if self.event[0].htype == 'HFO':
+                plt.subplot(111,polar=True)
+                angs = [x.phase.angle for x in evlist]
+                plt.hist(angs,21)
+                
+            plt.suptitle('Channel ' + self.ch_labels[idx2] + ', Cluster ' + str(idx) +' (' +str(len(evlist)) +')')
+            plt.show()            
+        def f_button1(clicked):
+            idx = clu_idx.add(1)
+            idx2 = ch_idx.ind
+            ploting(self,idx,idx2)
+            
+                
+        
+        def b_button1(clicked):
+            idx = clu_idx.add(-1)
+            idx2 = ch_idx.ind
+            ploting(self,idx,idx2)
+        
+        def f_button2(clicked):
+            idx = clu_idx.ind
+            idx2 = ch_idx.add(1)
+            ploting(self,idx,idx2)
+            
+                
+        
+        def b_button2(clicked):
+            idx = clu_idx.ind
+            idx2 = ch_idx.add(-1)
+            ploting(self,idx,idx2)  
+            
+             
+        if self.event[0].htype == 'HFO':
+            if not hasattr(self.event[0],'cluster'):
+                self.HFO_clustering()
+            
+        
+        ploting(self,cluster,channel)
+
+        clu_idx = IndexObj(cluster)
+        ch_idx = IndexObj(channel)
+            
+        buttonf_clu = widgets.Button(description = ">>")
+        buttonb_clu = widgets.Button(description = "<<")
+            
+        buttonf_clu.on_click(f_button1)
+        buttonb_clu.on_click(b_button1)
+        
+        buttonf_ch = widgets.Button(description = ">>")
+        buttonb_ch = widgets.Button(description = "<<")
+        
+      
+        buttonf_ch.on_click(f_button2)
+        buttonb_ch.on_click(b_button2)
+        
+        clus = widgets.Latex('cluster: ')
+        chan = widgets.Latex('channel: ')
+        vbox = widgets.Box()
+        vbox.children = [clus,buttonb_clu,buttonf_clu,chan,buttonb_ch,buttonf_ch]        
+        display(vbox)
+        
             
         
