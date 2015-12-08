@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from . import adjust_spines
 
-def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
+def plot_single_hfo(hfo, envelope = False, xlim =[-1,1], cutoff = None, v = True,
                     axes = None, figure_size = (15,10),dpi=600,saveplot = None):
     """
     Function to plot single Spike
@@ -56,7 +56,9 @@ def plot_single_hfo(hfo, envelope = True, xlim =[-1,1], cutoff = None, v = True,
     ax2.plot(time_v,filt)    
     ax2.plot(time_v[hfo.start_idx:hfo.end_idx],filt[hfo.start_idx:hfo.end_idx],'k')
     if envelope:
-        ax2.plot(time_v,np.abs(sig.hilbert(filt)))
+        env = hfo.waveform[:,2]
+        ax4 = ax2.twinx()
+        ax4.plot(time_v,env,'g')
     
 
     

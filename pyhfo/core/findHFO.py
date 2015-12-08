@@ -6,7 +6,7 @@ Created on Wed May  6 18:04:03 2015
 """
 
 from pyhfo.core import eegfilt, hfoObj, EventList, DataObj
-from pyhfo.sim import Hilbert_energy
+from pyhfo.sim import STenergy, Hilbert_energy, RMS, line_lenght
 import numpy as np
 import math
 import scipy.signal as sig
@@ -17,7 +17,7 @@ import h5py
 
 
 def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gaussian',10),
-                        ths = 5, ths_method = 'STD', min_dur = 3, min_separation = 2, energy = False,
+                        ths = 1.5, ths_method = 'Tukey', estimator = 'STenergy', min_dur = 3, min_separation = 2, 
                         whitening = True,filter_test=False,rc = None ,dview = None):
     '''
     Find HFO by Filter-Hilbert method.
@@ -62,11 +62,15 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
     if filter_test:
         filtOBj = eegfilt(Data,low_cut, high_cut,order,window,filter_test)
         return
-    def calc_ths(filt,ths,ths_method,energy):
-        if energy:
-            env  = Hilbert_energy(filt,window_size = 10) #np.abs(sig.hilbert(filt))**2
-        else:
-            env  = np.abs(sig.hilbert(filt))
+    def calc_ths(filt,ths,ths_method,estimator):
+        if estimator == 'STenergy':
+            env  = STenergy(filt,window_size = 6) 
+        elif estimator == 'RMS':
+            env  = RMS(filt,window_size = 6) 
+        elif estimator == 'Hilbert_envergy':
+            env = Hilbert_energy(filt,window_size=10)
+        elif estimator == 'line_length':
+            env = line_lenght(filt,window_size=6)
             
         if ths_method == 'STD':
             ths_value = np.mean(env) + ths*np.std(env)
@@ -128,14 +132,16 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
                 Lindex = np.arange(Data.data.shape[0]-Data.sample_rate-1,Data.data.shape[0])
             
             tstamp_idx = np.nonzero(Lindex==tstamp_points)[0][0]
-            waveform = np.empty((Lindex.shape[0],2))
+            waveform = np.empty((Lindex.shape[0],3))
             waveform[:] = np.NAN
             if ch == 'common':
                 waveform[:,0] = Data.common_ref[Lindex]
                 waveform[:,1] = filtOBj.common_ref[Lindex]
+                waveform[:,2] = env[Lindex]
             else:
                 waveform[:,0] = Data.data[Lindex,ch]
                 waveform[:,1] = filtOBj.data[Lindex,ch]
+                waveform[:,2] = env[Lindex]
             try:
                 start_idx = np.nonzero(Lindex==s)[0][0]
                 end_idx = np.nonzero(Lindex==e)[0][0]
@@ -154,11 +160,13 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
     sample_rate = Data.sample_rate
     # if no high cut, =nyrqst 
     if high_cut == None:
-        high_cut = sample_rate/2
+        high_cut_aux = sample_rate/2
+    else:
+        high_cut_aux = high_cut
         
-    cutoff = [low_cut,high_cut]
+    cutoff = [low_cut,high_cut_aux]
     # Transform min_dur from cicles to poinst - minimal duration of HFO (Default is 3 cicles)
-    min_dur = math.ceil(min_dur*sample_rate/high_cut)
+    min_dur = math.ceil(min_dur*sample_rate/high_cut_aux)
     # Transform min_separation from cicles to points - minimal separation between events
     min_separation = math.ceil(min_separation*sample_rate/low_cut)
     if rc is not None:
@@ -172,29 +180,27 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
         return
 
     
-    info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) + '; whiteting = ' + str(whitening)
+    info = str(low_cut) + '-' + str(high_cut) + ' Hz filtering; order: ' + str(order) + ', window: ' + str(window) + ' ; ' + str(ths) + '*' + ths_method + ' of ' + estimator + '; min_dur = ' + str(min_dur) + '; min_separation = ' + str(min_separation) + '; whiteting = ' + str(whitening)
     print info
     if whitening:
         signal = np.diff(Data.data,axis=0)
         signal= np.vstack((signal,signal[-1,:]))
-    else:
-        signal = Data.data
-    time_vec = Data.time_vec
-    amp = Data.amp_unit
-    labels = Data.ch_labels
-    bad_channels = Data.bad_channels
-    if Data.common_ref is not None:
-        common = np.diff(Data.common_ref)
-        common= np.append(common,common[-1])
-        Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels,common_ref = common)
-    else:
-        Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels)
+        time_vec = Data.time_vec
+        amp = Data.amp_unit
+        labels = Data.ch_labels
+        bad_channels = Data.bad_channels
+        if Data.common_ref is not None:
+            common = np.diff(Data.common_ref)
+            common= np.append(common,common[-1])
+            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels,common_ref = common)
+        else:
+            Data = DataObj(signal,sample_rate,amp,labels,time_vec,bad_channels)
 
     if Data.common_ref is not None:
         filtOBj = eegfilt(Data,low_cut, high_cut,order,window,rc = rc, dview = dview, common_filt = True)
         Fake = EventList(Data.ch_labels,(Data.time_vec[0],Data.time_vec[-1]))         
         filt = filtOBj.common_ref
-        env,ths_value = calc_ths(filt,ths,ths_method,energy)
+        env,ths_value = calc_ths(filt,ths,ths_method,estimator)
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
         
         adding_list(start,end,env,Data,filtOBj,'common',Fake,cutoff,info,None)
@@ -207,7 +213,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
         print 'Finding in channel'
         sys.stdout.flush()
         filt = filtOBj.data
-        env,ths_value = calc_ths(filt,ths,ths_method,energy)
+        env,ths_value = calc_ths(filt,ths,ths_method,estimator)
         start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
         adding_list(start,end,env,Data,filtOBj,0,HFOs,cutoff,info,None)
             
@@ -217,7 +223,7 @@ def findHFO_filtHilbert(Data,low_cut,high_cut= None, order = None,window = ('gau
                 print 'Finding in channel ' + filtOBj.ch_labels[ch]
                 sys.stdout.flush()
                 filt = filtOBj.data[:,ch]
-                env,ths_value = calc_ths(filt,ths,ths_method,energy)
+                env,ths_value = calc_ths(filt,ths,ths_method,estimator)
                 start, end = findStartEnd(filt,env,ths_value,min_dur,min_separation)
                 if start.shape[0]>0 and end.shape[0]>0:
                     if Data.common_ref is not None:

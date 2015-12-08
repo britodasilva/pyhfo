@@ -68,9 +68,15 @@ class EventList(object):
             elif attr == 'peak_win_power':
                 attribute = [x.peak_win_power for x in self.__getlist__('spectrum')]
             elif attr == 'angle':
-                attribute = [x.angle for x in self.__getlist__('phase')]
+                attribute = [x.angle for x in self.__getlist__('theta_phase')]
             elif attr == 'r':
-                attribute = [x.r for x in self.__getlist__('phase')]
+                attribute = [x.r for x in self.__getlist__('theta_phase')]
+            elif attr == 'instananeous_frequency':
+                attribute = [x.instananeous_frequency for x in self.__getlist__('HilbertFrequency')]
+            elif attr == 'freq_std':
+                attribute = [x.freq_std for x in self.__getlist__('HilbertFrequency')]
+            elif attr == 'freq_mean':
+                attribute = [x.freq_mean for x in self.__getlist__('HilbertFrequency')]
             else:
                 raise Exception('Attribute not found')
             
@@ -523,7 +529,7 @@ class EventList(object):
                     pass
             if self.event[0].htype == 'HFO':
                 plt.subplot(111,polar=True)
-                angs = [x.phase.angle for x in evlist]
+                angs = [x.theta_phase.angle for x in evlist]
                 plt.hist(angs,21)
                 
             plt.suptitle('Channel ' + self.ch_labels[idx2] + ', Cluster ' + str(idx) +' (' +str(len(evlist)) +')')

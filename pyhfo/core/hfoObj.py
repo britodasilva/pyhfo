@@ -37,7 +37,8 @@ class hfoObj(object):
         self.info = info                    # info about the method of detection (cuttofs, order)
         self.duration = self.end_sec - self.start_sec  # calculate the event duration
         self.spectrum = HFOSpectrum(self,cutoff) # spectrum object
-        self.phase = HFOSphase(self) # spectrum object
+        self.theta_phase = HFOSphase(self) # spectrum object
+        self.HilbertFrequency = HFOinstfreq(self)
         self.peak_amp = np.max(np.abs(waveform[:,1])) # get the peak amplitude value
         self.cluster = cluster
         
@@ -124,9 +125,17 @@ class hfoObj(object):
 class HFOSphase(object):
     def __init__(self,hfoObj):
         filtered = filt(hfoObj.waveform[:,0],low_cut=8,high_cut=12,window=('kaiser',2))
+        self.theta = filtered
         PHASE = np.angle(sig.hilbert(filtered))
+        self.phase = PHASE
         k = PHASE[hfoObj.start_idx:hfoObj.end_idx] 
         self.r = np.sum(np.exp(1j*k))
         self.angle = np.angle(self.r)
         self.maginitude = np.abs(self.r)/k.shape[0]
         
+class HFOinstfreq(object):
+    def __init__(self,hfoObj):
+        PHASE = np.angle(sig.hilbert(sig.detrend(hfoObj.waveform[:,1])))
+        self.instananeous_frequency = (hfoObj.sample_rate/(2*np.pi))*np.diff(np.unwrap(PHASE))
+        self.freq_std = np.std(self.instananeous_frequency[hfoObj.start_idx:hfoObj.end_idx] )
+        self.freq_mean = np.mean(self.instananeous_frequency[hfoObj.start_idx:hfoObj.end_idx] )

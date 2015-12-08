@@ -284,7 +284,7 @@ def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0
     if order == None:
         numtaps = int(sample_rate/10 + 1)
     else:
-        numtaps = order
+        numtaps = order+1
     # Nyquist rate
     nyq = sample_rate/2
     

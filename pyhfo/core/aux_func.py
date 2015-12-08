@@ -6,6 +6,7 @@ Created on Mon Nov 16 10:33:52 2015
 """
 import numpy as np
 import time
+from pyhfo.core import EventList
 
 def find_max(data, thr=None):
     '''
@@ -46,3 +47,23 @@ class Timer(object):
         if self.name:
             print '[%s]' % self.name,
         print 'Elapsed: %.4f seconds' % (time.time() - self.tstart)
+        
+        
+def merge_lists(EvList1,EvList2):
+    ch_labels1 = EvList1.ch_labels
+    ch_labels2 = EvList2.ch_labels
+    if set(ch_labels1) != set(ch_labels2):
+        raise 'Merge should be from same channels list'
+    time_edge1 = EvList1.time_edge
+    time_edge2 = EvList2.time_edge
+    if time_edge1[1]<time_edge2[0]:
+        new_time = time_edge1[0],time_edge2[1]
+    else:
+        new_time = time_edge2[0],time_edge1[1]
+        
+    NewEvList = EventList(ch_labels1,new_time)
+    for ev in EvList1:
+        NewEvList.__addEvent__(ev)
+    for ev in EvList2:
+        NewEvList.__addEvent__(ev)
+    return NewEvList

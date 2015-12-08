@@ -199,11 +199,11 @@ def Quian(env,ths):
     
     
 def Hilbert_envelope(x):
-    return np.abs(sig.hilbert(x))
+    return np.abs(sig.hilbert(np.detrend(x)))
 
 def Hilbert_energy(x,window_size = 10):
     window = np.ones(window_size)/float(window_size)
-    return np.convolve(np.abs(sig.hilbert(x))**2, window, 'same')
+    return np.convolve(np.abs(sig.hilbert(np.detrend(x)))**2, window, 'same')
     
 def RMS(a, window_size = 6):
     a2 = np.power(a,2)
