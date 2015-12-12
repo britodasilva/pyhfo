@@ -10,7 +10,7 @@ from EventList import *
 from SpikeObj import *
 from hfoObj import *
 from HFOSpectrum import *
-from pre_processing import decimate, resample, merge, add_bad, remove_bad, create_avg, eegfilt, pop_channel
+from pre_processing import decimate, resample, merge, add_bad, remove_bad, create_avg, create_median, eegfilt, pop_channel
 from findHFO import findHFO_filtHilbert, findHFO_filtbank
 from phase_coupling import phase_coupling, SPK_HFO_coupling
 from TQWT import dualQd,ComputeNow,dualQ,tqwt_bp,tqwt_bpd

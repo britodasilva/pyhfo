@@ -232,7 +232,28 @@ def create_avg(Data):
     newData = DataObj(avg,Data.sample_rate,Data.amp_unit,avg_label,Data.time_vec,Data.bad_channels,common_ref = np.mean(Data.data[:,index],1))
     return newData
     
+def create_median(Data):
+    ''' 
+    Create median montagem excluding bad_channels
     
+    Parameters
+    ----------
+    Data: DataObj
+        Data object
+    '''
+    # get non-bad channels index
+    index = [ch for ch in range(Data.n_channels) if ch not in Data.bad_channels]
+    # empty variable    
+    avg = np.empty(Data.data.shape)
+    avg[:] = np.NAN
+    avg_label = []
+    for ch in index:
+        avg[:,ch] = Data.data[:,ch]-np.median(Data.data[:,index],1)
+    for ch in range(Data.n_channels):
+        avg_label.append(Data.ch_labels[ch]+'-median')
+    
+    newData = DataObj(avg,Data.sample_rate,Data.amp_unit,avg_label,Data.time_vec,Data.bad_channels,common_ref = np.mean(Data.data[:,index],1))
+    return newData   
     
 def eegfilt(Data,low_cut = None,high_cut= None,order = None,window = ('kaiser',0.5),filter_test=False, rc = None ,dview = None,common_filt = False):
     '''

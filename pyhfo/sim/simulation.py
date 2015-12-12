@@ -278,9 +278,11 @@ def ishfo(filtered,x,ths,min_dur = 10., min_separation = 66.):
     if start_ix.shape[0] == 1:
         edg = [start_ix,end_ix]
         return True, edg
-        if start_ix.shape[0]>1:
-            print start_ix.shape[0]
+
     else:
+        if start_ix.shape[0]>1:
+            print start_ix
+            print end_ix
         return False, None
         
         
