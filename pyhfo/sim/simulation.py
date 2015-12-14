@@ -199,11 +199,20 @@ def Quian(env,ths):
     
     
 def Hilbert_envelope(x):
-    return np.abs(sig.hilbert(np.detrend(x)))
+    return np.abs(sig.hilbert(sig.detrend(x)))
 
 def Hilbert_energy(x,window_size = 10):
     window = np.ones(window_size)/float(window_size)
-    return np.convolve(np.abs(sig.hilbert(np.detrend(x)))**2, window, 'same')
+    return np.convolve(np.abs(sig.hilbert(sig.detrend(x)))**2, window, 'same')
+    
+def Teager_Energy(a):
+    sqr = np.power(a[1:-1],2)
+    odd = a[:-2]
+    even = a[2:]
+    energy = sqr-odd*even
+    energy = np.append(energy[0],energy)
+    energy = np.append(energy,energy[-1])
+    return energy
     
 def RMS(a, window_size = 6):
     a2 = np.power(a,2)
@@ -286,11 +295,11 @@ def ishfo(filtered,x,ths,min_dur = 10., min_separation = 66.):
         return False, None
         
         
-def calc_stat(data,filtered,ths,start,end,True_ev,v=True):
+def calc_stat(prop,filtered,ths,start,end,True_ev,v=True):
     
     aux = []
     for s,e in zip(start,end):
-        aux = np.append(aux,ishfo(filtered[int(s):int(e)],data[int(s):int(e)],ths))
+        aux = np.append(aux,ishfo(filtered[int(s):int(e)],prop[int(s):int(e)],ths)[0])
     TP = 0
     TN = 0
     FP = 0
