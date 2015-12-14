@@ -201,9 +201,10 @@ def Quian(env,ths):
 def Hilbert_envelope(x):
     return np.abs(sig.hilbert(sig.detrend(x)))
 
-def Hilbert_energy(x,window_size = 10):
-    window = np.ones(window_size)/float(window_size)
-    return np.convolve(np.abs(sig.hilbert(sig.detrend(x)))**2, window, 'same')
+def Hilbert_energy(x):#,window_size = 10):
+    #window = np.ones(window_size)/float(window_size)
+    #return np.convolve(np.abs(sig.hilbert(sig.detrend(x)))**2, window, 'same')
+    return np.abs(sig.hilbert(sig.detrend(x)))**2
     
 def Teager_Energy(a):
     sqr = np.power(a[1:-1],2)
