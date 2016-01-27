@@ -291,14 +291,14 @@ def ishfo(filtered,x,ths,min_dur = 10., min_separation = 66.):
 
     else:
         if start_ix.shape[0]>1:
-            print start_ix
-            print end_ix
+            return start_ix.shape[0],[start_ix,end_ix]
         return False, None
         
         
-def calc_stat(prop,filtered,ths,start,end,True_ev,v=True):
+def calc_stat(prop,filtered,ths,start=None,end=None,True_ev=None,v=True):
     
     aux = []
+    
     for s,e in zip(start,end):
         aux = np.append(aux,ishfo(filtered[int(s):int(e)],prop[int(s):int(e)],ths)[0])
     TP = 0
@@ -307,14 +307,31 @@ def calc_stat(prop,filtered,ths,start,end,True_ev,v=True):
     FN = 0
     for hf,rs in zip(True_ev,aux):
         hf = bool(hf)
-        if hf and rs:
-            TP +=1
-        elif hf and not rs:
-            FN +=1
-        elif rs and not hf:
-            FP +=1
-        elif not rs and not hf:
-            TN +=1
+        if rs < 2:
+            if hf and rs:
+                TP +=1
+            elif hf and not rs:
+                FN +=1
+            elif rs and not hf:
+                FP +=1
+            elif not rs and not hf:
+                TN +=1
+        else:
+            if hf:
+                TP +=1
+                FP +=rs-1
+            else:
+                FP +=rs
+                
+    new_start = np.append(0,start)
+    new_end = np.append(end,-1)
+    aux = []
+    for s,e in zip(new_start,new_end):
+        aux = np.append(aux,ishfo(filtered[int(s):int(e)],prop[int(s):int(e)],ths)[0])
+        
+    for rs in aux:
+        FP +=rs
+        
     sens = TP*100./(TP+FN)
     spec = TN*100./(TN+FP)
     if v:

@@ -49,6 +49,11 @@ def decimate(Data,q):
                                 Data.ch_labels,new_time_vec,Data.bad_channels)
     return newData
     
+
+    
+    
+    
+    
 def resample(Data,q):
     '''
     Slice data with quocient q. 
@@ -374,7 +379,7 @@ def pop_channel(Data,ch):
     Parameters
     ----------
     Data: DataObj
-        Data object to filt
+        Data object 
     ch: int
         Channel number
     '''
@@ -382,5 +387,22 @@ def pop_channel(Data,ch):
          raise Exception('DataObj is single channel')
     signal = Data.data[:,ch]
     label = Data.ch_labels[ch]
+    newData = DataObj(signal,Data.sample_rate,Data.amp_unit,label,Data.time_vec)
+    return newData
+    
+def addchannel(Data,ch):
+    '''
+    Add a channel vector to a Data object.
+    Parameters
+    ----------
+    Data: DataObj
+        Data object to add channel
+    ch: DataObj
+        Quocient of resample.
+    '''  
+    signal = Data.data.T
+    ch_sig = ch.data
+    signal = np.vstack((signal,ch_sig)).T
+    label =np.append(Data.ch_labels,ch.ch_labels)
     newData = DataObj(signal,Data.sample_rate,Data.amp_unit,label,Data.time_vec)
     return newData
