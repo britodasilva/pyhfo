@@ -49,7 +49,10 @@ def open_dataset(file_name,dataset_name,htype = 'auto'):
         # Time vector
         if 'Time_vec_edge' in dataset.attrs:
             edge = dataset.attrs['Time_vec_edge']
-            time_vec = np.linspace(edge[0],edge[1],n_points,endpoint=False)
+            if edge[0] == edge[1]:
+                time_vec = np.linspace(0,end_time,n_points,endpoint=False)
+            else:
+                time_vec = np.linspace(edge[0],edge[1],n_points,endpoint=False)
         else:
             time_vec = np.linspace(0,end_time,n_points,endpoint=False)
         # Check if has 'Bad_channels' attribute, if not, create one empty
@@ -187,38 +190,3 @@ def loadSPK_waveclus(filename,EventList,ch):
     return EventList
     
 
-def get_info(folder):
-    
-    # load file
-    print folder+'info.rhd'
-    myData = RHD.openRhd(folder+'info.rhd')
-    # get sample rate
-    return myData
-    
-    
-def loadDAT(filename,srate,label='data',amp=True):
-    '''
-    amp = True if it is from Amplifier, False if it is from ADC board
-    
-    '''
-    fh = open(filename,'r')
-    fh.seek(0)
-    if amp:
-        data = np.fromfile(fh, dtype=np.int16, count=-1)
-    else:
-        data = np.fromfile(fh, dtype=np.uint16, count=-1)
-    fh.close()
-    data = np.double(data)
-    if amp:
-        data *= 0.195 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
-    else:
-        data *= 0.000050354 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
-    amp_unit = '$\mu V$'
-    # Time vector   
-    n_points  = data.shape[0]
-    end_time  = n_points/srate
-    time_vec  = np.linspace(0,end_time,n_points,endpoint=False)
-    
-    Data = DataObj(data,srate,amp_unit,label,time_vec,[])
-    return Data
-        

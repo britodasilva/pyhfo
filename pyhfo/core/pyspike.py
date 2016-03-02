@@ -10,11 +10,15 @@ from copy import copy
 from DataObj import *
 from EventList import *
 from SpikeObj import *
+from pyhfo.io.read_header import read_header
+from aux_func import Timer
 import os
 import matlab.engine
 import scipy.io as sio
 import shutil
 import h5py
+import sys
+import scipy.signal as sig
 
 def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK,max_points = 90000000 ):
     
@@ -57,6 +61,12 @@ def getSpike_from_DAT(folder,fname,ch,clus_folder,SPK,max_points = 90000000 ):
 def move_figs(folder,clus_folder):
     os.chdir(clus_folder)
     filelist = [ f for f in os.listdir(".") if f.endswith(".jpg") ]
+    for f in filelist:
+        shutil.move(clus_folder+f,folder+f)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".mat") ]
+    for f in filelist:
+        shutil.move(clus_folder+f,folder+f)
+    filelist = [ f for f in os.listdir(".") if f.endswith(".mat500") ]
     for f in filelist:
         shutil.move(clus_folder+f,folder+f)
     
@@ -117,13 +127,129 @@ def clear_clus_folder(clus_folder):
     for f in filelist:
         os.remove(f)
 
+def get_info(folder):
+    
+    # load file
+    print folder+'info.rhd'
+    myData = RHD.openRhd(folder+'info.rhd')
+    # get sample rate
+    sys.stdout.flush()
+    return myData
+    
+
+def openDATfile(filename,ftype,srate=25000):
+    fh = open(filename,'r')
+    fh.seek(0)
+    if ftype == 'amp':
+        data = np.fromfile(fh, dtype=np.int16)
+        fh.close()
+        data = np.double(data)
+        data *= 0.195 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
+    elif ftype == 'adc':
+        data = np.fromfile(fh, dtype=np.uint16)
+        fh.close()
+        data = np.double(data)
+        data *= 0.000050354 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
+        data -= np.mean(data)
+    
+    elif ftype == 'aux':
+        data = np.fromfile(fh, dtype=np.uint16)
+        fh.close()
+        data = np.double(data)
+        data *= 0.0000748 # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
+        
+    elif ftype == 'time':
+        data = np.fromfile(fh, dtype=np.int32)
+        fh.close()
+        data = np.double(data)
+        data /= srate # according the Intan, the output should be multiplied by 0.195 to be converted to micro-volts
+    return data
+    
+  
+
+        
+def loadITANfolder(folder,q=25):
+    with Timer(folder):
+        #get files in the folder
+        files = getFileList(folder)
+        # load info
+        fid = open(folder+files['info'][0], 'rb')
+        info = read_header(fid)
+        sys.stdout.flush()
+        #Sampling Rate
+        sample_rate = info['sample_rate']
+        time_vec = openDATfile(folder+files['time'][0],'time',sample_rate)
+        time_vec = time_vec[0:-1:q]
+        amp_unit = '$\mu V$'
+        labels = []
+        nch = len(files['amp']) + len(files['adc']) # +len(files['aux'])
+        data = np.zeros([time_vec.shape[0],nch])
+        eng = matlab.engine.start_matlab()
+        clus_folder = eng.which('Get_spikes')
+        clus_folder = clus_folder[:-12]
+        eng.cd(clus_folder,nargout=0)
+        count = 0
+        for f in files['amp']:
+            sys.stdout.flush()
+            with Timer(f):     
+                name = f[:-4]
+                labels.append(name)
+                aux_data = openDATfile(folder+f,'amp',sample_rate)
+                
+                tfile = open(clus_folder + 'Files.txt', 'w')
+                
+                tfile.write(name +'\n')
+                tfile.close()
+                sio.savemat(clus_folder+name+'.mat', {'data':aux_data})
+                eng.Get_spikes_alt(sample_rate,nargout=0)
+                
+                eng.close('all', nargout=0)
+                move_figs(folder,clus_folder)
+                data[:,count] = sig.decimate(aux_data,q)
+                count +=1
+        eng.cd(folder,nargout=0)
+        eng.save_NEX(sample_rate,labels,nargout=0)
+        eng.save_NEX2(sample_rate,labels,int(time_vec[0]),nargout=0)
+        for f in files['adc']:
+            sys.stdout.flush()
+            with Timer(f):  
+                labels.append(f[:-4])
+                aux_data = openDATfile(folder+f,'adc',sample_rate)
+                data[:,count] = sig.decimate(aux_data,q)
+                count +=1
+                
+#        for f in files['aux']:
+#            print '.',
+#            sys.stdout.flush()
+#            labels.append(f[:-4])
+#            data[:,count] = openDATfile(folder+f,'aux',edge=edge)
+#            count +=1
+        Data = DataObj(data,sample_rate/q,amp_unit,labels,time_vec,[])
+
+        
+        
+    Data.save(folder+'downsampled.h5','data')
+    eng.quit()    
+    return Data
+        
 
     
 def getFileList(folder):
     filelist = os.listdir(folder)
-    label = [f for f in filelist if f.startswith('amp')]
-    label.sort()
-    return label
+    label_amp = [f for f in filelist if f.startswith('amp') and f.endswith('.dat')]
+    label_amp.sort()
+    label_ADC = [f for f in filelist if f.startswith('board-ADC') and f.endswith('.dat')]
+    label_ADC.sort()
+    label_aux = [f for f in filelist if f.startswith('aux') and f.endswith('.dat')]
+    label_aux.sort()
+    label_vdd = [f for f in filelist if f.startswith('vdd') and f.endswith('.dat')]
+    label_vdd.sort()
+    label_info = [f for f in filelist if f.startswith('info') and f.endswith('.rhd')]
+    label_info.sort()
+    label_time = [f for f in filelist if f.startswith('time') and f.endswith('.dat')]
+    label_time.sort()
+    dic_labels = {'amp':label_amp, 'adc':label_ADC, 'aux':label_aux, 'vdd':label_vdd, 'info':label_info, 'time':label_time}
+    return dic_labels
     
     
 def open_file_DAT(folder,ports,nchans,srate,bsize=None,starttime = 0):

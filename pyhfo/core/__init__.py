@@ -14,5 +14,5 @@ from pre_processing import decimate, resample, merge, add_bad, remove_bad, creat
 from findHFO import findHFO_filtHilbert, findHFO_filtbank
 from phase_coupling import phase_coupling, SPK_HFO_coupling
 from TQWT import dualQd,ComputeNow,dualQ,tqwt_bp,tqwt_bpd
-from pyspike import open_file_DAT, getDATduration,getFileList,getSpike_from_DAT,get_len
+from pyspike import open_file_DAT, getDATduration,getFileList,getSpike_from_DAT,get_len,loadITANfolder
 from aux_func import Timer, merge_lists
