@@ -29,4 +29,5 @@ Folter structure
 * ``/io/`` contains Input-Output scripts (loads/save data)
 * ``/ui/`` contains User Interface scripts (plots)
 * ``/core/`` contains main scripts
+* ``/sim/`` contains codes to create simulate signals
 
